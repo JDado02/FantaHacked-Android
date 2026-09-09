@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Gli stessi colori del foglio di stile: la barra di sistema non deve
+         staccare dalla pagina. -->
+    <color name="fondo">#0d0f14</color>
+    <color name="accento">#f6a821</color>
+</resources>

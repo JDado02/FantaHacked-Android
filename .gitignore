@@ -1,0 +1,18 @@
+# Il wrapper di Gradle: il .jar e' un binario, lo genera Android Studio.
+gradle/wrapper/gradle-wrapper.jar
+gradlew
+gradlew.bat
+
+# Roba di costruzione
+.gradle/
+build/
+app/build/
+local.properties
+*.apk
+*.aab
+*.iml
+.idea/
+captures/
+
+# I dati veri non stanno qui: si scaricano da DBFantaHacked.
+# Quelli in prove/dati servono solo alle prove di equivalenza, e ci stanno.

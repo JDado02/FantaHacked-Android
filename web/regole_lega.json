@@ -1,0 +1,105 @@
+{
+  "_commento": "TEMPLATE DA COMPILARE. Sono i valori standard del fantacalcio classico: verificali sul regolamento della TUA lega prima di usare il software. Il motore converte le statistiche in punti attesi usando esattamente questi numeri, quindi un valore sbagliato qui falsa ogni prezzo consigliato.",
+  "partecipanti": 8,
+  "crediti_iniziali": 500,
+  "rosa": {
+    "portieri": 3,
+    "difensori": 8,
+    "centrocampisti": 8,
+    "attaccanti": 6
+  },
+  "bonus_malus": {
+    "_commento": "Valori standard. Alcune leghe differenziano il gol per ruolo: i quattro campi sotto lo permettono.",
+    "gol_portiere": 3,
+    "gol_difensore": 3,
+    "gol_centrocampista": 3,
+    "gol_attaccante": 3,
+    "assist": 1,
+    "gol_subito": -1,
+    "rigore_parato": 3,
+    "rigore_segnato": 3,
+    "rigore_sbagliato": -3,
+    "autogol": -2,
+    "ammonizione": -0.5,
+    "espulsione": -1
+  },
+  "portiere_imbattuto": {
+    "_commento": "Bonus al portiere che chiude la partita senza subire gol.",
+    "attivo": true,
+    "bonus": 1
+  },
+  "modificatore_difesa": {
+    "_commento": "ATTENZIONE: la scala cambia molto da lega a lega, inserisci la tua. Quando e' attivo, il valore di portieri e difensori si sposta dalla ricerca del bonus alla media voto: un difensore regolare da 6,2 vale piu' di uno discontinuo che ogni tanto segna. E' la regola che piu' cambia la strategia d'asta.",
+    "attivo": true,
+    "componenti": "portiere + 3 migliori difensori",
+    "scala": [
+      {
+        "media_minima": 6.0,
+        "bonus": 1
+      },
+      {
+        "media_minima": 6.25,
+        "bonus": 2
+      },
+      {
+        "media_minima": 6.5,
+        "bonus": 3
+      },
+      {
+        "media_minima": 6.75,
+        "bonus": 4.5
+      },
+      {
+        "media_minima": 7.0,
+        "bonus": 6
+      }
+    ]
+  },
+  "modificatore_centrocampo": {
+    "attivo": false,
+    "scala": []
+  },
+  "modificatore_attacco": {
+    "attivo": false,
+    "scala": []
+  },
+  "modificatore_fairplay": {
+    "attivo": false,
+    "scala": []
+  },
+  "mercato": {
+    "_commento": "Come si spendono davvero i crediti in QUESTA lega. Non e' una preferenza: e' una previsione, e il software la usa per stimare quanto costera' ogni giocatore. Sui prezzi storici di riferimento la ripartizione media e' P 9 / D 16 / C 28 / A 47, ma ogni stanza ha le sue abitudini: se da voi si spara sugli attaccanti, alza quel numero. La somma deve fare 100.",
+    "ripartizione_budget": {
+      "portieri": 7,
+      "difensori": 12,
+      "centrocampisti": 21,
+      "attaccanti": 60
+    },
+    "_commento_mercato": "ripartizione_mercato: come spende la stanza DAVVERO, misurata sui prezzi pagati in un'asta vera di questa lega (200 acquisti, settembre 2026). Serve a stimare quanto costera' un giocatore. E' diversa da ripartizione_budget qui sopra, che e' invece la forma con cui si vuole uscire dall'asta: usare la stessa per entrambe peggiora una delle due. Se la lascio vuota, vale ripartizione_budget.",
+    "ripartizione_mercato": {
+      "portieri": 8,
+      "difensori": 18,
+      "centrocampisti": 28,
+      "attaccanti": 46
+    },
+    "_commento_impara": "Con impara_dall_asta attivo, la previsione si corregge da sola man mano che i giocatori vengono venduti: quello che la stanza ha gia' speso e' un fatto, non una stima.",
+    "impara_dall_asta": true,
+    "_commento_fiducia": "fiducia_nel_mercato: da 0 a 1, quanto pesare il giudizio del mercato accanto al mio modello nel decidere QUANTO VALE un giocatore. Il modello conosce xG, minuti e modificatore; il mercato conosce la titolarita' e le gerarchie, che nel database non ci sono. A 0 il software si fida solo dei propri numeri e finisce per consigliare rose piene di buoni affari e senza attaccanti; a 1 si limita a seguire la stanza e non ha piu' nessun vantaggio. 0.5 e' il compromesso.",
+    "fiducia_nel_mercato": 0.5,
+    "_commento_riserva": "riserva_minima_per_ruolo: la percentuale del TUO budget che vuoi comunque destinare a ogni reparto, qualunque cosa dicano i conti. Serve a mettere un limite alla logica del buon affare: lasciato libero, il motore compra sei attaccanti da un credito perche' in punti conviene, e ti ritrovi senza attacco se le proiezioni sbagliano su quattro giocatori invece che su uno. La somma non deve superare 100; il resto del budget resta libero e il motore lo distribuisce dove rende di piu'.",
+    "riserva_minima_per_ruolo": {
+      "portieri": 4,
+      "difensori": 10,
+      "centrocampisti": 15,
+      "attaccanti": 30
+    },
+    "_commento_portieri": "portieri_a_pacchetto: chi si aggiudica il portiere titolare di una squadra di serie A prende anche il secondo e il terzo della stessa squadra a 1 credito ciascuno. Cambia tutto per i portieri: le scelte diventano 8 su 20 squadre, non 24 giocatori su 75.",
+    "portieri_a_pacchetto": true
+  },
+  "sostituzioni": 5,
+  "_note_compilazione": [
+    "partecipanti e crediti_iniziali determinano il pool totale di crediti della lega: il motore ci normalizza sopra tutti i prezzi.",
+    "La somma degli slot di rosa moltiplicata per i partecipanti da' il numero di giocatori che verranno assegnati: e' il dato che fissa il livello di rimpiazzo per ruolo.",
+    "Se la tua lega usa il modificatore di difesa, compilalo con cura: incide piu' di ogni altro parametro."
+  ]
+}

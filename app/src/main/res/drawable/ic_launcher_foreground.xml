@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Un'icona che dice quello che fa il programma: un numero con un tetto
+     sopra. Il tetto e' il limite, il numero e' quanto si puo' spingere. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#f6a821"
+        android:pathData="M30,40 L78,40 L78,46 L30,46 Z" />
+    <path android:fillColor="#f6a821"
+        android:pathData="M50,52 L58,52 L58,72 L66,72 L54,84 L42,72 L50,72 Z" />
+</vector>

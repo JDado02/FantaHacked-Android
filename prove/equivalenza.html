@@ -1,0 +1,167 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>FantaHacked — equivalenza col motore Python</title>
+<style>
+  body { font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace;
+         background: #101216; color: #e6e8ec; margin: 0; padding: 18px 22px; }
+  h1 { font-size: 15px; color: #9aa3b2; font-weight: 600; margin: 0 0 14px; }
+  .ok { color: #63d38a; } .no { color: #ff6b6b; } .att { color: #f0b429; }
+  pre { white-space: pre-wrap; margin: 0; }
+  .riga { padding: 1px 0; }
+</style>
+<h1>Lo stesso numero, calcolato due volte</h1>
+<pre id="esito">avvio…</pre>
+
+<script type="module">
+import { carica as caricaRegole } from '../web/motore/regole.js';
+import { da as datiDa } from '../web/motore/dati.js';
+import { StatoAsta } from '../web/motore/asta.js';
+import { Valutatore } from '../web/motore/valutazione.js';
+import { Ottimizzatore } from '../web/motore/ottimizzatore.js';
+import { Consigliere } from '../web/motore/strategia.js';
+
+const out = document.getElementById('esito');
+const righe = [];
+let superati = 0;
+let falliti = 0;
+const peggiori = [];
+
+function scrivi(t, classe) {
+  righe.push(classe ? `<span class="${classe}">${t}</span>` : t);
+  out.innerHTML = righe.join('\n');
+}
+
+// Uno scarto in virgola mobile e' inevitabile: Python e JavaScript non
+// arrotondano allo stesso modo a ogni passo. Quello che non e' accettabile e'
+// uno scarto che si **vede**: un credito di differenza su un prezzo cambia una
+// decisione. La soglia e' quindi stretta sui numeri piccoli e relativa sui
+// grandi, ed e' zero sui numeri interi, dove non esistono scarti legittimi.
+const TOLLERANZA = 1e-6;
+
+function vicini(a, b) {
+  if (a === null || b === null) return a === b;
+  const d = Math.abs(a - b);
+  return d <= TOLLERANZA || d <= TOLLERANZA * Math.max(Math.abs(a), Math.abs(b));
+}
+
+function confronta(nome, atteso, avuto, chiave) {
+  if (vicini(atteso, avuto)) { superati += 1; return true; }
+  falliti += 1;
+  peggiori.push({ nome, chiave, atteso, avuto,
+                  scarto: Math.abs((atteso || 0) - (avuto || 0)) });
+  return false;
+}
+
+const CAMPI = ['punti', 'vor', 'punti_mod', 'prezzo_mercato', 'prezzo_atteso',
+               'prezzo_base', 'prezzo_piano', 'peso_prezzo'];
+
+async function main() {
+  const [grezzi, regoleJson, attesi] = await Promise.all([
+    fetch('dati/dati.json').then((r) => r.json()),
+    fetch('dati/regole_lega.json').then((r) => r.json()),
+    fetch('attesi.json').then((r) => r.json()),
+  ]);
+  scrivi(`dati: ${grezzi.giocatori.righe.length} giocatori, `
+       + `tappe attese: ${attesi.tappe.length}`);
+
+  const reg = caricaRegole(regoleJson);
+  const dati = datiDa(grezzi);
+
+  for (let t = 0; t < attesi.tappe.length; t += 1) {
+    const tappa = attesi.tappe[t];
+    const st = new StatoAsta(reg, null);
+    st.inizializza(attesi.nomi.slice(1), attesi.nomi[0]);
+    // Il listone serve allo stato per sapere ruolo e nome di chi si compra.
+    const perId = new Map(dati.giocatori.map((g) => [g.id, g]));
+    st.collega(perId);
+    for (const [gid, pid, prezzo] of tappa.acquisti) {
+      st.registra(gid, pid, prezzo, null);
+    }
+
+    const t0 = performance.now();
+    const v = new Valutatore(dati, reg, st);
+    const o = new Ottimizzatore(v);
+    const c = new Consigliere(v, o);
+    const t1 = performance.now();
+
+    const primaFalliti = falliti;
+    const g = tappa.dati.globali;
+    confronta(`tappa ${t}`, g.crediti_residui, v.crediti_residui, 'crediti_residui');
+    confronta(`tappa ${t}`, g.slot_residui, v.slot_residui, 'slot_residui');
+    confronta(`tappa ${t}`, g.pool_discrezionale, v.pool_discrezionale, 'pool');
+    confronta(`tappa ${t}`, g.vor_totale, v.vor_totale, 'vor_totale');
+    confronta(`tappa ${t}`, g.densita, v._densita, 'densita');
+    for (const r of ['P', 'D', 'C', 'A']) {
+      confronta(`tappa ${t} ${r}`, g.rimpiazzo_fm[r], v.rimpiazzo_fm[r], 'rimpiazzo');
+      confronta(`tappa ${t} ${r}`, g.budget_ruolo[r], v.budget_ruolo[r], 'budget_mercato');
+      confronta(`tappa ${t} ${r}`, g.budget_piano[r], v.budget_piano[r], 'budget_piano');
+      if (g.curva[r]) {
+        for (let i = 0; i < 3; i += 1) {
+          confronta(`tappa ${t} curva ${r}`, g.curva[r][i], (v.curva[r] || [])[i],
+                    'curva' + i);
+        }
+      }
+    }
+    for (const pid of Object.keys(g.aggressivita)) {
+      confronta(`tappa ${t} pres ${pid}`, g.aggressivita[pid],
+                v.aggressivita[parseInt(pid, 10)], 'aggressivita');
+    }
+    confronta(`tappa ${t}`, g.opt, o.opt(), 'opt');
+
+    for (const [sid, valori] of Object.entries(tappa.dati.giocatori)) {
+      const x = v.g.get(parseInt(sid, 10));
+      if (!x) { falliti += 1; peggiori.push({ nome: sid, chiave: 'assente' }); continue; }
+      CAMPI.forEach((campo, i) => {
+        confronta(x.nome, valori[i], x[campo] === undefined ? null : x[campo], campo);
+      });
+    }
+
+    for (const [sid, valori] of Object.entries(tappa.dati.limiti)) {
+      const x = v.g.get(parseInt(sid, 10));
+      const [lim, optSenza, optCon, guadagno, verdetto, decMax, chiusura,
+             convenienza, utilita] = valori;
+      const [limJs, d] = o.maxBid(x);
+      confronta(x.nome, lim, limJs, 'max_bid');
+      confronta(x.nome, optSenza, d.opt_senza, 'opt_senza');
+      confronta(x.nome, optCon, d.opt_con, 'opt_con');
+      confronta(x.nome, guadagno, d.guadagno, 'guadagno');
+      const dec = c.decisione(x);
+      if (dec.verdetto !== verdetto) {
+        falliti += 1;
+        peggiori.push({ nome: x.nome, chiave: 'verdetto',
+                        atteso: verdetto, avuto: dec.verdetto, scarto: 1 });
+      } else { superati += 1; }
+      confronta(x.nome, decMax, dec.max_bid, 'dec.max_bid');
+      confronta(x.nome, chiusura, dec.chiusura, 'chiusura');
+      confronta(x.nome, convenienza, dec.convenienza, 'convenienza');
+      confronta(x.nome, utilita, dec.utilita, 'utilita');
+    }
+
+    const nuoviFalliti = falliti - primaFalliti;
+    scrivi(`  tappa ${t}: ${tappa.acquisti.length} acquisti, `
+         + `${Math.round(t1 - t0)} ms per costruire il motore, `
+         + (nuoviFalliti ? `${nuoviFalliti} differenze` : 'tutto uguale'),
+           nuoviFalliti ? 'no' : 'ok');
+  }
+
+  scrivi('');
+  if (peggiori.length) {
+    peggiori.sort((a, b) => (b.scarto || 0) - (a.scarto || 0));
+    scrivi('le venti differenze piu\' grosse:', 'att');
+    for (const p of peggiori.slice(0, 20)) {
+      scrivi(`   ${String(p.nome).padEnd(22)} ${String(p.chiave).padEnd(16)}`
+           + ` atteso ${p.atteso}   avuto ${p.avuto}`, 'no');
+    }
+  }
+  scrivi('');
+  scrivi(`${falliti ? 'CI SONO DIFFERENZE' : 'IDENTICI'}   `
+       + `${superati} confronti uguali, ${falliti} diversi`,
+         falliti ? 'no' : 'ok');
+  window.__esito = { superati, falliti, peggiori: peggiori.slice(0, 20) };
+}
+
+main().catch((e) => {
+  scrivi('ERRORE: ' + (e && e.stack ? e.stack : e), 'no');
+  window.__esito = { errore: String(e && e.stack ? e.stack : e) };
+});
+</script>

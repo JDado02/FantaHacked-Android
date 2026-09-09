@@ -1,0 +1,123 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>FantaHacked — le liste, confrontate col motore Python</title>
+<style>
+  body { font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace;
+         background: #101216; color: #e6e8ec; margin: 0; padding: 18px 22px; }
+  h1 { font-size: 15px; color: #9aa3b2; font-weight: 600; margin: 0 0 14px; }
+  .ok { color: #63d38a; } .no { color: #ff6b6b; } .att { color: #f0b429; }
+  pre { white-space: pre-wrap; margin: 0; }
+</style>
+<h1>Le stesse liste, costruite due volte</h1>
+<pre id="esito">avvio…</pre>
+
+<script type="module">
+const q = '?v=' + Date.now();
+const { carica: caricaRegole } = await import('../web/motore/regole.js' + q);
+const { da: datiDa } = await import('../web/motore/dati.js' + q);
+const { StatoAsta } = await import('../web/motore/asta.js' + q);
+const { Valutatore } = await import('../web/motore/valutazione.js' + q);
+const { Ottimizzatore } = await import('../web/motore/ottimizzatore.js' + q);
+const { Consigliere } = await import('../web/motore/strategia.js' + q);
+
+const out = document.getElementById('esito');
+const righe = [];
+let superati = 0;
+let falliti = 0;
+const problemi = [];
+
+function scrivi(t, classe) {
+  righe.push(classe ? `<span class="${classe}">${t}</span>` : t);
+  out.innerHTML = righe.join('\n');
+}
+
+function uguali(nome, atteso, avuto, dove) {
+  const a = JSON.stringify(atteso);
+  const b = JSON.stringify(avuto);
+  if (a === b) { superati += 1; return true; }
+  falliti += 1;
+  problemi.push({ dove: dove + ' / ' + nome, atteso: a, avuto: b });
+  return false;
+}
+
+// Le liste si confrontano per **nome e ordine**, perche' e' quello che si
+// vede. I numeri accanto stanno gia' nell'altra prova, ma vale la pena
+// ricontrollarli qui: se una lista contiene i nomi giusti con i numeri di un
+// altro, il difetto e' peggio che se mancasse la lista.
+function estrai(lista, extra) {
+  return lista.map((d) => {
+    const v = { id: d.id, nome: d.nome, verdetto: d.verdetto,
+                max_bid: d.max_bid, chiusura: d.chiusura,
+                utilita: d.utilita, categoria: d.categoria === undefined ? null : d.categoria };
+    for (const k of (extra || [])) v[k] = d[k] === undefined ? null : d[k];
+    return v;
+  });
+}
+
+async function main() {
+  const [grezzi, regoleJson, attesi, attesiCons] = await Promise.all([
+    fetch('dati/dati.json').then((r) => r.json()),
+    fetch('dati/regole_lega.json').then((r) => r.json()),
+    fetch('attesi.json').then((r) => r.json()),
+    fetch('attesi_consiglio.json').then((r) => r.json()),
+  ]);
+  const reg = caricaRegole(regoleJson);
+  const dati = datiDa(grezzi);
+  const perId = new Map(dati.giocatori.map((g) => [g.id, g]));
+
+  for (let t = 0; t < attesiCons.tappe.length; t += 1) {
+    const atteso = attesiCons.tappe[t];
+    const st = new StatoAsta(reg, null);
+    st.inizializza(attesi.nomi.slice(1), attesi.nomi[0]);
+    st.collega(perId);
+    for (const [gid, pid, prezzo] of attesi.tappe[t].acquisti) {
+      st.registra(gid, pid, prezzo, null);
+    }
+    const t0 = performance.now();
+    const v = new Valutatore(dati, reg, st);
+    const o = new Ottimizzatore(v);
+    const c = new Consigliere(v, o);
+    const cons = c.consiglio();
+    const t1 = performance.now();
+
+    const prima = falliti;
+    const dove = 'tappa ' + t;
+    uguali('fase', atteso.fase, cons.fase, dove);
+    uguali('serve', atteso.serve, cons.serve, dove);
+    uguali('pressione', atteso.pressione, cons.pressione, dove);
+    uguali('indicazione', atteso.indicazione, cons.indicazione, dove);
+    uguali('budget_ruolo', atteso.budget_ruolo, cons.budget_ruolo, dove);
+    uguali('top', atteso.top, estrai(cons.top), dove);
+    uguali('evitare', atteso.evitare, estrai(cons.evitare), dove);
+    uguali('alternative', atteso.alternative, estrai(cons.alternative), dove);
+    uguali('svuotare', atteso.svuotare,
+           estrai(cons.svuotare, ['brucia', 'contendenti', 'minacciosi']), dove);
+    uguali('coppie', atteso.coppie,
+           estrai(cons.coppie, ['con', 'copertura_buchi']), dove);
+    uguali('vuoti', atteso.vuoti, Object.keys(cons.vuoti).sort(), dove);
+
+    const nuovi = falliti - prima;
+    scrivi(`  tappa ${t}: fase ${cons.fase}, ${cons.top.length} consigliati, `
+         + `${Math.round(t1 - t0)} ms, `
+         + (nuovi ? `${nuovi} liste diverse` : 'tutte uguali'),
+           nuovi ? 'no' : 'ok');
+  }
+
+  if (problemi.length) {
+    scrivi('');
+    for (const p of problemi.slice(0, 6)) {
+      scrivi('  ' + p.dove, 'att');
+      scrivi('     atteso ' + p.atteso.slice(0, 400), 'no');
+      scrivi('     avuto  ' + p.avuto.slice(0, 400), 'no');
+    }
+  }
+  scrivi('');
+  scrivi(`${falliti ? 'CI SONO DIFFERENZE' : 'IDENTICHE'}   `
+       + `${superati} liste uguali, ${falliti} diverse`, falliti ? 'no' : 'ok');
+  window.__esito = { superati, falliti };
+}
+
+main().catch((e) => {
+  scrivi('ERRORE: ' + (e && e.stack ? e.stack : e), 'no');
+});
+</script>

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0f14">
+<title>FantaHacked</title>
+<link rel="stylesheet" href="stile.css">
+<link rel="manifest" href="manifesto.webmanifest">
+</head>
+<body>
+
+<!-- ====================================================== avvio / caricamento -->
+<section id="schermo-avvio" class="schermo attivo">
+  <div class="centrato">
+    <h1 class="marchio">FantaHacked</h1>
+    <p class="sottotitolo">Fino a quanto conviene spingersi</p>
+    <p id="avvio-stato" class="stato">carico i dati…</p>
+    <button id="avvio-riprova" class="bottone secondario nascosto">Riprova</button>
+  </div>
+</section>
+
+<!-- ============================================================ nuova asta -->
+<section id="schermo-nuova" class="schermo">
+  <header class="testa">
+    <h2>Nuova asta</h2>
+    <p class="nota">La prima squadra è la tua: tutto è calcolato dal tuo punto di vista.</p>
+  </header>
+  <div class="corpo">
+    <div id="campi-nomi" class="campi"></div>
+    <p id="nuova-regole" class="nota"></p>
+    <button id="btn-crea" class="bottone primario grande">Comincia l'asta</button>
+    <button id="btn-annulla-nuova" class="bottone piatto nascosto">Torna all'asta in corso</button>
+  </div>
+</section>
+
+<!-- ============================================================== principale -->
+<section id="schermo-principale" class="schermo">
+
+  <header id="barra" class="barra">
+    <button id="btn-menu" class="icona" aria-label="impostazioni">☰</button>
+    <div class="barra-centro">
+      <div class="barra-crediti"><b id="miei-crediti">—</b><span>crediti</span></div>
+      <div class="barra-slot"><b id="miei-slot">—</b><span>slot</span></div>
+    </div>
+    <div id="barra-fase" class="pillola">—</div>
+  </header>
+
+  <!-- ---------------------------------------------------------- pannelli -->
+  <div id="pannello-chiama" class="pannello attivo">
+    <p id="indicazione" class="indicazione"></p>
+    <div id="coppie" class="riquadro-coppie nascosto"></div>
+    <div id="scarsita" class="avviso nascosto"></div>
+
+    <div class="sezione">
+      <h3>Da prendere <span id="conta-top" class="conta"></span></h3>
+      <div id="lista-top" class="lista"></div>
+    </div>
+    <div class="sezione">
+      <h3>Alternative</h3>
+      <div id="lista-alt" class="lista"></div>
+    </div>
+    <div class="sezione">
+      <h3>Da far pagare agli altri</h3>
+      <div id="lista-svuota" class="lista"></div>
+    </div>
+    <div class="sezione">
+      <h3>Da evitare</h3>
+      <div id="lista-evita" class="lista"></div>
+    </div>
+  </div>
+
+  <div id="pannello-cerca" class="pannello">
+    <div class="cerca-riga">
+      <input id="campo-cerca" type="search" inputmode="search" autocomplete="off"
+             placeholder="Chi hanno chiamato?" aria-label="cerca un giocatore">
+      <button id="btn-pulisci" class="icona" aria-label="pulisci">✕</button>
+    </div>
+    <div id="filtri" class="filtri">
+      <button class="filtro attivo" data-ruolo="">tutti</button>
+      <button class="filtro" data-ruolo="P">P</button>
+      <button class="filtro" data-ruolo="D">D</button>
+      <button class="filtro" data-ruolo="C">C</button>
+      <button class="filtro" data-ruolo="A">A</button>
+    </div>
+    <div id="risultati" class="lista"></div>
+  </div>
+
+  <div id="pannello-rosa" class="pannello">
+    <div id="riepilogo-rosa"></div>
+    <div class="sezione">
+      <h3>La mia rosa</h3>
+      <div id="mia-rosa"></div>
+    </div>
+    <div class="sezione">
+      <h3>Gli altri</h3>
+      <div id="altri-presidenti" class="tabellina"></div>
+    </div>
+    <div class="sezione">
+      <h3>Ultimi acquisti</h3>
+      <div id="ultimi" class="lista compatta"></div>
+      <button id="btn-annulla-ultimo" class="bottone piatto">Annulla l'ultimo</button>
+    </div>
+  </div>
+
+  <!-- ------------------------------------------------------------ navigazione -->
+  <nav id="navigazione">
+    <button class="voce attiva" data-pannello="chiama"><span>◎</span>Chiama</button>
+    <button class="voce" data-pannello="cerca"><span>⌕</span>Cerca</button>
+    <button class="voce" data-pannello="rosa"><span>▦</span>Rosa</button>
+  </nav>
+</section>
+
+<!-- ============================================================ scheda giocatore -->
+<div id="scheda" class="foglio" hidden>
+  <div class="foglio-fondo"></div>
+  <div class="foglio-corpo" role="dialog" aria-modal="true" aria-label="scheda giocatore">
+    <button id="btn-chiudi-scheda" class="icona chiudi" aria-label="chiudi">✕</button>
+    <div id="scheda-contenuto"></div>
+  </div>
+</div>
+
+<!-- ============================================================== registrazione -->
+<div id="registra" class="foglio" hidden>
+  <div class="foglio-fondo"></div>
+  <div class="foglio-corpo" role="dialog" aria-modal="true" aria-label="registra acquisto">
+    <button id="btn-chiudi-registra" class="icona chiudi" aria-label="chiudi">✕</button>
+    <h3 id="registra-titolo">Chi se l'è preso?</h3>
+    <div id="registra-presidenti" class="scelta-presidenti"></div>
+    <label class="campo-prezzo">
+      <span>a quanto</span>
+      <input id="registra-prezzo" type="number" inputmode="numeric" min="1" value="1">
+    </label>
+    <p id="registra-nota" class="nota"></p>
+    <button id="btn-conferma" class="bottone primario grande">Registra</button>
+  </div>
+</div>
+
+<!-- ================================================================ impostazioni -->
+<div id="menu" class="foglio" hidden>
+  <div class="foglio-fondo"></div>
+  <div class="foglio-corpo" role="dialog" aria-modal="true" aria-label="impostazioni">
+    <button id="btn-chiudi-menu" class="icona chiudi" aria-label="chiudi">✕</button>
+    <h3>Impostazioni</h3>
+    <div id="info-dati" class="tabellina"></div>
+    <button id="btn-aggiorna-dati" class="bottone secondario">Cerca dati più recenti</button>
+    <button id="btn-nuova-asta" class="bottone secondario">Nuova asta</button>
+    <p class="nota">L'asta resta su questo telefono. I dati dei giocatori si
+      scaricano; se non c'è rete, si usa quello che c'è già.</p>
+  </div>
+</div>
+
+<div id="brindisi" class="brindisi" hidden></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

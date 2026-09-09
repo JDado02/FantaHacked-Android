@@ -1,0 +1,11 @@
+{
+  "name": "FantaHacked",
+  "short_name": "FantaHacked",
+  "description": "Fino a quanto conviene spingersi, durante l'asta",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0f14",
+  "theme_color": "#0d0f14",
+  "lang": "it"
+}

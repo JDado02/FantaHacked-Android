@@ -1,0 +1,43 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FantaHacked — le prove</title>
+<style>
+  body { font: 15px/1.55 -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+         background: #101216; color: #e6e8ec; margin: 0; padding: 28px 22px;
+         max-width: 640px; }
+  h1 { font-size: 19px; margin: 0 0 6px; }
+  p { color: #9aa3b2; }
+  a { display: block; background: #171c26; border: 1px solid #262d3b;
+      border-left: 3px solid #f6a821; border-radius: 12px;
+      padding: 14px 16px; margin: 10px 0; color: inherit; text-decoration: none; }
+  a b { display: block; font-size: 16px; }
+  a span { color: #9aa3b2; font-size: 13.5px; }
+  code { background: #1d2330; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+</style>
+
+<h1>Le prove</h1>
+<p>Il motore di questa applicazione è una traduzione di quello Python del
+programma per computer. Queste due pagine verificano che dicano davvero la
+stessa cosa: rileggono i numeri che il motore Python ha scritto in
+<code>attesi.json</code> e <code>attesi_consiglio.json</code> e li confrontano
+uno per uno.</p>
+
+<a href="equivalenza.html">
+  <b>I numeri</b>
+  <span>Prezzi, VOR, contributo al modificatore, coefficienti della curva,
+  ottimo dello zaino, limiti e verdetti — su 593 giocatori e quattro momenti
+  diversi dell'asta.</span>
+</a>
+
+<a href="equivalenza_consiglio.html">
+  <b>Le liste</b>
+  <span>Chi chiamare, su chi ripiegare, chi far pagare agli altri, le coppie da
+  chiudere e le frasi delle sezioni vuote: nomi e ordine compresi. Un motore
+  può avere tutti i numeri giusti e mettere in fila i nomi nel modo
+  sbagliato.</span>
+</a>
+
+<p>Per rigenerare i file attesi, dal progetto del computer:</p>
+<p><code>python simulazioni/dump_equivalenza.py &lt;qui&gt;/prove/attesi.json</code><br>
+<code>python simulazioni/dump_consiglio.py &lt;qui&gt;/prove/attesi_consiglio.json</code></p>

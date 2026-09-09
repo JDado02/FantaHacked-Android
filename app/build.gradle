@@ -1,0 +1,53 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'it.fantahacked.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "it.fantahacked.app"
+        // 24 = Android 7. Sotto, la WebView di sistema e' vecchia abbastanza
+        // da non capire i moduli JavaScript, che e' come e' scritto il motore.
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    sourceSets {
+        main {
+            // L'applicazione vive in `web/`, alla radice del progetto: la
+            // stessa cartella che si apre nel browser per lavorarci e per
+            // farci girare le prove di equivalenza. Gradle la impacchetta
+            // da li' invece di tenerne una copia dentro `app/`: due copie
+            // sarebbero due versioni, e prima o poi ne aggiorni una sola.
+            assets.srcDirs += ['../web']
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // Niente offuscamento: dentro non c'e' logica Java da proteggere,
+            // e un apk leggibile e' piu' facile da rimettere in piedi fra un
+            // anno.
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
+                          'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    // Serve a servire gli assets su un indirizzo https finto: senza, la
+    // pagina non ha un'origine e non puo' scaricare niente.
+    implementation 'androidx.webkit:webkit:1.11.0'
+}

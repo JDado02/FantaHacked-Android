@@ -1,0 +1,9 @@
+* text=auto
+*.java text
+*.js text
+*.html text
+*.css text
+*.md text
+*.json text
+*.xml text
+*.gradle text

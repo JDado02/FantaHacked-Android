@@ -1,0 +1,5 @@
+// Radice del progetto: qui non si costruisce niente, si dichiarano soltanto
+// le versioni degli strumenti.
+plugins {
+    id 'com.android.application' version '8.5.2' apply false
+}
