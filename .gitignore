@@ -14,6 +14,12 @@ app/build/
 local.properties
 *.apk
 *.aab
+
+# L'unica eccezione: l'apk pronto da scaricare col telefono. Sta nel
+# repository apposta - il link e' quello di GitHub, si apre dal telefono e si
+# installa senza passare da un computer. Tre megabyte e mezzo, uno solo, e si
+# sovrascrive a ogni versione invece di accumularsi.
+!/FantaHacked.apk
 *.iml
 .idea/
 captures/

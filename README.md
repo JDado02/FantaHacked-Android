@@ -4,6 +4,20 @@ L'assistente d'asta, sul telefono. **Lo stesso motore** del programma per
 computer — non una versione ridotta: il calcolo è identico, e c'è una prova che
 lo dimostra numero per numero.
 
+## ⬇️ [Scarica FantaHacked.apk](https://github.com/JDado02/FantaHacked-Android/raw/main/FantaHacked.apk)
+
+**3,4 MB — Android 7 o più recente.** Apri questa pagina dal telefono, tocca il
+link qui sopra e installa.
+
+La prima volta Android chiede di consentire l'installazione da fonte
+sconosciuta: è il permesso che dà al browser (o al gestore file) la facoltà di
+aprire un apk, e lo si concede per quell'app soltanto. L'apk è firmato con la
+chiave di sviluppo, quindi Play Protect avvisa che «non riconosce lo
+sviluppatore»: si sceglie *installa comunque*.
+
+Al primo avvio l'app scarica i dati dei giocatori — mezzo mega, dieci secondi —
+e da lì in poi funziona anche senza rete.
+
 ---
 
 ## Com'è fatto
@@ -162,10 +176,14 @@ elaborato di perderla.
 
 ## L'apk
 
-`app/build/outputs/apk/debug/app-debug.apk` — **3,4 MB**, Android 7 (`minSdk
-24`) o più recente. Si installa copiandolo sul telefono e aprendolo: la prima
-volta Android chiede di consentire l'installazione da fonte sconosciuta per
-il gestore file che lo apre. Con il telefono collegato e il debug USB attivo:
+Quello pronto è [`FantaHacked.apk`](FantaHacked.apk) qui nel repository: sta
+nel repository apposta, perché il link di GitHub si apre dal telefono e si
+installa senza passare da un computer. È una copia di
+`app/build/outputs/apk/debug/app-debug.apk`, e si sovrascrive a ogni versione
+invece di accumularsi.
+
+**3,4 MB**, Android 7 (`minSdk 24`) o più recente. Con il telefono collegato e
+il debug USB attivo:
 
 ```bash
 strumenti/sdk/platform-tools/adb install -r app/build/outputs/apk/debug/app-debug.apk
