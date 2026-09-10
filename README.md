@@ -149,11 +149,23 @@ elaborato di perderla.
 
 Il progetto è completo e pronto a compilare, ma **l'apk non è ancora stato
 costruito qui**: servono l'SDK Android e l'accettazione delle sue licenze, che
-non si possono dare al posto di chi installa. Con Android Studio (o l'SDK da
-riga di comando) è un comando solo:
+è un contratto con Google e lo firma chi installa.
+
+Da un computer Windows senza niente installato tranne un JDK 17:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File costruisci_apk.ps1
+```
+
+Scarica Gradle e l'SDK dentro `strumenti\` (fuori dal repository: si cancella
+la cartella e non resta niente), si ferma sulle licenze e ti chiede di
+rispondere `y`, poi compila. L'apk esce in
+`app/build/outputs/apk/debug/app-debug.apk`.
+
+Con Android Studio già installato è un comando solo:
 
 ```bash
-./gradlew assembleDebug      # app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleDebug
 ```
 
 La prima volta Android Studio chiede di generare il wrapper Gradle: qui c'è

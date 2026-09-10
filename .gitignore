@@ -3,6 +3,10 @@ gradle/wrapper/gradle-wrapper.jar
 gradlew
 gradlew.bat
 
+# Gli strumenti che `costruisci_apk.ps1` si scarica da solo: quasi un giga
+# fra Gradle e l'SDK Android. Si cancella la cartella e non resta niente.
+strumenti/
+
 # Roba di costruzione
 .gradle/
 build/
