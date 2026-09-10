@@ -165,6 +165,8 @@ input:focus-visible, button:focus-visible {
 .riga-cifra.ottimo b { color: var(--ottimo); }
 .riga-cifra.attenzione b { color: var(--medio); }
 .riga-cifra.stop b { color: var(--stop); }
+/* Una cifra che non e' il tuo limite ma una stima: si legge, non si insegue. */
+.riga-cifra.stimata b { color: var(--testo-fioco); font-weight: 600; }
 
 .lista.compatta .riga { padding: 8px 11px; }
 

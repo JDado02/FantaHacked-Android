@@ -165,10 +165,17 @@ function disegnaConsiglio() {
     box.classList.add('nascosto');
   }
 
-  riempi('#lista-top', cons.top, cons.vuoti.top, (d) => ({
-    cifra: d.max_bid, etichetta: 'limite',
-    sotto: d.perche || d.frase,
-  }));
+  // Quando il limite e' zero la cifra da mostrare non e' lo zero: sarebbe una
+  // riga che dice «e' il ripiego» con accanto un numero che dice «mai», e a
+  // colpo d'occhio sembrano due indicazioni opposte. Si mostra invece quanto
+  // dovrebbe chiudere, in grigio e con la tilde - la stessa convenzione del
+  // programma per computer - e la frase sotto dice quando quel limite smette
+  // di essere zero.
+  riempi('#lista-top', cons.top, cons.vuoti.top, (d) => (
+    d.max_bid > 0
+      ? { cifra: d.max_bid, etichetta: 'limite', sotto: d.perche || d.frase }
+      : { cifra: '~' + d.chiusura, etichetta: 'chiude a', stimata: true,
+          sotto: d.perche || d.frase }));
   $('#conta-top').textContent = cons.top.length
     ? '(' + cons.top.length + ')' : '';
   riempi('#lista-alt', cons.alternative, cons.vuoti.alternative, (d) => ({
@@ -205,7 +212,8 @@ function rigaHtml(d, cfg) {
     + '</div>'
     + '<div class="riga-sotto">' + esc(cfg.sotto || '') + '</div>'
     + '</div>'
-    + '<div class="riga-cifra ' + esc(d.colore || '') + '">'
+    + '<div class="riga-cifra ' + esc(d.colore || '')
+    + (cfg.stimata ? ' stimata' : '') + '">'
     + '<b>' + cfg.cifra + '</b><span>' + esc(cfg.etichetta) + '</span></div>'
     + '</button>';
 }
