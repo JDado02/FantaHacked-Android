@@ -414,20 +414,30 @@ export class Consigliere {
     const dp = arrotonda(d.resa - primo.resa);
     const dc = d.chiusura - primo.chiusura;
     const chi = primo.nome;
+    let frase;
     if (dc < 0 && dp < 0) {
-      return "Rende " + (-dp) + " punti meno di " + chi + ", ma ne costa "
-           + (-dc) + " in meno: e' il ripiego se " + chi
-           + " vola oltre il tuo limite.";
+      frase = "Rende " + (-dp) + " punti meno di " + chi + ", ma ne costa "
+            + (-dc) + " in meno: e' il ripiego se " + chi
+            + " vola oltre il tuo limite.";
+    } else if (dc < 0) {
+      frase = "Costa " + (-dc) + " crediti meno di " + chi + " e rende quanto "
+            + "lui: a parita' di reparto e' l'affare piu' grosso della lista.";
+    } else if (dp < 0) {
+      frase = "Rende " + (-dp) + " punti meno di " + chi + " e costa " + dc
+            + " crediti in piu': ha senso solo se " + chi + " va via prima.";
+    } else {
+      frase = "Rende " + dp + " punti piu' di " + chi + " ma ne costa " + dc + " in piu'.";
     }
-    if (dc < 0) {
-      return "Costa " + (-dc) + " crediti meno di " + chi + " e rende quanto "
-           + "lui: a parita' di reparto e' l'affare piu' grosso della lista.";
+    // Un ripiego col limite a zero non e' una contraddizione: finche' il primo
+    // della fascia e' in lista, quello slot rende di piu' aspettando lui. Ma
+    // sullo schermo restava solo la cifra, uno zero accanto alla parola
+    // "ripiego". Lo zero e' giusto; mancava la riga che dice quando smette di
+    // esserlo.
+    if ((d.max_bid || 0) <= 0) {
+      frase += " Adesso il suo limite e' zero: conviene solo dopo che " + chi
+             + " e' andato a qualcun altro.";
     }
-    if (dp < 0) {
-      return "Rende " + (-dp) + " punti meno di " + chi + " e costa " + dc
-           + " crediti in piu': ha senso solo se " + chi + " va via prima.";
-    }
-    return "Rende " + dp + " punti piu' di " + chi + " ma ne costa " + dc + " in piu'.";
+    return frase;
   }
 
   _indicazione(ruolo, serve, pressione, prendere, svuotare, obbligati, budget) {
