@@ -1,0 +1,208 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>FantaHacked — le regole dell'asta, sul telefono</title>
+<style>
+  body { font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace;
+         background: #101216; color: #e6e8ec; margin: 0; padding: 18px 22px; }
+  h1 { font-size: 15px; color: #9aa3b2; font-weight: 600; margin: 0 0 14px; }
+  .ok { color: #63d38a; } .no { color: #ff6b6b; } .tit { color: #f0b429; margin-top: 12px; }
+  pre { white-space: pre-wrap; margin: 0; }
+</style>
+<h1>Quello che non deve poter succedere</h1>
+<pre id="esito">avvio…</pre>
+
+<script type="module">
+// Le prove di equivalenza dicono che i due motori calcolano uguale. Queste
+// dicono un'altra cosa: che l'asta, sul telefono, si comporta come deve.
+// Sono le regole che se saltano non si vede un numero sbagliato - si perde
+// una serata: crediti che non tornano dopo un annullo, un giocatore comprato
+// due volte, un'asta che non si ritrova al riavvio.
+const q = '?v=' + Date.now();
+const { carica: caricaRegole } = await import('../web/motore/regole.js' + q);
+const { da: datiDa } = await import('../web/motore/dati.js' + q);
+const { StatoAsta, DepositoLocale, ErroreAsta } = await import('../web/motore/asta.js' + q);
+const { Valutatore } = await import('../web/motore/valutazione.js' + q);
+const { Ottimizzatore } = await import('../web/motore/ottimizzatore.js' + q);
+const { Consigliere } = await import('../web/motore/strategia.js' + q);
+
+const out = document.getElementById('esito');
+const righe = [];
+let superati = 0;
+let falliti = 0;
+
+function scrivi(t, c) {
+  righe.push(c ? `<span class="${c}">${t}</span>` : t);
+  out.innerHTML = righe.join('\n');
+}
+function titolo(t) { scrivi('\n' + t, 'tit'); }
+function verifica(nome, cond, dettaglio) {
+  if (cond) { superati += 1; scrivi('  OK   ' + nome, 'ok'); }
+  else { falliti += 1; scrivi('  NO   ' + nome + '   ' + (dettaglio || ''), 'no'); }
+}
+
+const NOMI = ['Davide', 'Luca', 'Windser', 'Jacopo', 'Giorgio', 'Viane', 'Fede', 'Canzia'];
+
+async function main() {
+  const grezzi = await (await fetch('dati/dati.json')).json();
+  const regoleJson = grezzi.regole
+    || await (await fetch('dati/regole_lega.json')).json();
+  const reg = caricaRegole(regoleJson);
+  const dati = datiDa(grezzi);
+  const perId = new Map(dati.giocatori.map((g) => [g.id, g]));
+
+  const chiave = 'fantahacked.prova.' + Date.now();
+  const deposito = new DepositoLocale(chiave);
+
+  function apri() {
+    const st = new StatoAsta(reg, deposito);
+    st.collega(perId);
+    const salvata = deposito.leggi();
+    if (salvata) st.carica(salvata);
+    return st;
+  }
+
+  titolo('[1] Le regole arrivano col pacchetto');
+  verifica('il pacchetto porta le regole della lega', !!grezzi.regole);
+  verifica('e sono quelle giuste', reg.partecipanti === 8 && reg.crediti === 500,
+           reg.partecipanti + ' squadre, ' + reg.crediti + ' crediti');
+  verifica('la firma del regolamento e\' nel manifest dei dati',
+           !!(dati.meta && dati.meta.regole_firma), JSON.stringify(dati.meta));
+
+  titolo('[2] L\'asta si ritrova al riavvio');
+  let st = apri();
+  st.inizializza(NOMI.slice(1), NOMI[0]);
+  let v = new Valutatore(dati, reg, st);
+  let o = new Ottimizzatore(v);
+  const malen = [...v.g.values()].find((x) => x.nome === 'Malen');
+  st.registra(malen.id, 1, 184, 205);
+  const st2 = apri();               // come se l'applicazione fosse stata chiusa
+  verifica('l\'acquisto c\'e\' ancora dopo la riapertura',
+           st2.acquisti().length === 1 && st2.acquisti()[0].prezzo === 184);
+  verifica('col limite di allora', st2.acquisti()[0].limite === 205);
+  verifica('e i crediti sono scesi', st2.io().crediti === 500 - 184);
+  verifica('i nomi delle squadre sono i miei',
+           st2.presidenti().map((p) => p.nome).join(',') === NOMI.join(','));
+
+  titolo('[3] Annullare rimette tutto com\'era');
+  st2.annulla(malen.id);
+  verifica('i crediti tornano interi', st2.io().crediti === 500);
+  verifica('il giocatore torna libero', !st2.venduti().has(malen.id));
+  const st3 = apri();
+  verifica('e anche riaprendo', st3.acquisti().length === 0);
+
+  titolo('[4] Quello che non si puo\' fare');
+  st = apri();
+  st.inizializza(NOMI.slice(1), NOMI[0]);
+  st.registra(malen.id, 1, 10, null);
+  let errore = null;
+  try { st.registra(malen.id, 2, 10, null); } catch (e) { errore = e; }
+  verifica('lo stesso giocatore non si compra due volte',
+           errore instanceof ErroreAsta, String(errore));
+  errore = null;
+  try { st.registra(malen.id + 999999, 1, 10, null); } catch (e) { errore = e; }
+  verifica('un giocatore inesistente viene rifiutato', errore instanceof ErroreAsta);
+  errore = null;
+  const altro = [...v.g.values()].find((x) => x.ruolo === 'A' && x.id !== malen.id);
+  try { st.registra(altro.id, 1, 0, null); } catch (e) { errore = e; }
+  verifica('il prezzo minimo e\' 1', errore instanceof ErroreAsta);
+  errore = null;
+  try { st.registra(altro.id, 1, 500, null); } catch (e) { errore = e; }
+  verifica('non si puo\' spendere tutto e restare senza rosa',
+           errore instanceof ErroreAsta, String(errore));
+  verifica('dopo un rifiuto lo stato non e\' cambiato',
+           st.acquisti().length === 1 && st.io().crediti === 490);
+
+  titolo('[5] Chi non e\' in lista non si compra, nemmeno per un credito');
+  st = apri();
+  st.inizializza(NOMI.slice(1), NOMI[0]);
+  v = new Valutatore(dati, reg, st);
+  o = new Ottimizzatore(v);
+  let c = new Consigliere(v, o);
+  const fuori = [...v.g.values()].filter((x) => x.fuori_lista);
+  verifica('ce ne sono, e sono parecchi', fuori.length > 10, fuori.length + ' trovati');
+  const uno = fuori.find((x) => x.ruolo === 'A') || fuori[0];
+  verifica('il limite e\' zero', o.maxBid(uno)[0] === 0, uno.nome);
+  verifica('il verdetto lo dice', c.decisione(uno).verdetto === 'FUORI LISTA');
+  verifica('le presenze attese sono zero', (uno.presenze || 0) === 0);
+  // E anche a fine asta, quando la regola degli ultimi posti ripescherebbe
+  // chiunque pur di non lasciare una casella vuota. Il caso va costruito
+  // davvero: un solo slot scoperto e i crediti finiti. Ventitre' giocatori a
+  // un credito, uno a quattrocentosettantasei, e resta un attaccante da
+  // trovare con un credito in mano - meno del costo di un riempitivo.
+  const sano = (r) => v.disponibili(r).filter((x) => !x.fuori_lista);
+  for (const r of ['P', 'D', 'C']) {
+    for (const x of sano(r).slice(0, reg.slot[r])) st.registra(x.id, 1, 1, null);
+  }
+  const att = sano('A');
+  for (const x of att.slice(0, reg.slot.A - 2)) st.registra(x.id, 1, 1, null);
+  st.registra(att[reg.slot.A - 2].id, 1, st.io().crediti - 1, null);
+  verifica('la rosa e\' piena tranne un posto', st.slotResidui(1) === 1,
+           st.slotResidui(1) + ' slot');
+  verifica('e i crediti sono finiti', st.io().crediti === 1, '' + st.io().crediti);
+  v = new Valutatore(dati, reg, st); o = new Ottimizzatore(v); c = new Consigliere(v, o);
+  const uno2 = v.g.get(uno.id);
+  verifica('la regola degli ultimi posti e\' attiva',
+           o.ultimiPosti('A') === true);
+  verifica('su chi e\' in lista ripesca davvero',
+           o.maxBid(v.disponibili('A').find((x) => !x.fuori_lista))[0] === 1);
+  verifica('ma su di lui il limite resta zero', o.maxBid(uno2)[0] === 0,
+           'limite ' + o.maxBid(uno2)[0]);
+  verifica('e il verdetto non cambia', c.decisione(uno2).verdetto === 'FUORI LISTA');
+
+  titolo('[6] I portieri a pacchetto');
+  st = apri();
+  st.inizializza(NOMI.slice(1), NOMI[0]);
+  v = new Valutatore(dati, reg, st);
+  verifica('la lega li usa', v.pacchetto === true);
+  const titolare = v.disponibili('P').find((x) => x.titolare_por && v.riserveDi(x.id).length >= 2);
+  verifica('un titolare si porta dietro le riserve', !!titolare,
+           titolare ? titolare.nome : 'nessuno trovato');
+  if (titolare) {
+    st.registra(titolare.id, 1, 40, null);
+    for (const rid of v.riserveDi(titolare.id)) {
+      if (st.slotResidui(1, 'P') <= 0) break;
+      st.registra(rid, 1, 1, null);
+    }
+    verifica('il reparto portieri si chiude con una chiamata sola',
+             st.slotResidui(1, 'P') === 0, st.slotResidui(1, 'P') + ' slot rimasti');
+    verifica('e costa il titolare piu\' due crediti',
+             st.io().crediti === 500 - 42, '' + st.io().crediti);
+    const vv = new Valutatore(dati, reg, st);
+    const oo = new Ottimizzatore(vv);
+    const altroP = vv.disponibili('P')[0];
+    verifica('da li\' in poi nessun portiere ha piu\' un limite',
+             oo.maxBid(altroP)[0] === 0, altroP.nome);
+  }
+
+  titolo('[7] Il motore risponde in fretta');
+  st = apri();
+  st.inizializza(NOMI.slice(1), NOMI[0]);
+  const t0 = performance.now();
+  v = new Valutatore(dati, reg, st); o = new Ottimizzatore(v); c = new Consigliere(v, o);
+  const t1 = performance.now();
+  const cons = c.consiglio();
+  const t2 = performance.now();
+  const x0 = v.disponibili('A')[0];
+  const t3 = performance.now();
+  o.maxBid(x0);
+  const t4 = performance.now();
+  scrivi('       costruire il motore ' + Math.round(t1 - t0) + ' ms, '
+       + 'un consiglio ' + Math.round(t2 - t1) + ' ms, '
+       + 'un limite ' + Math.round(t4 - t3) + ' ms');
+  verifica('un consiglio completo sta sotto il mezzo secondo', (t2 - t1) < 500);
+  verifica('un limite sta sotto i cento millisecondi', (t4 - t3) < 100);
+  verifica('e il consiglio ha davvero qualcosa da dire',
+           !!cons.indicazione && (cons.top.length + cons.alternative.length) > 0);
+
+  deposito.cancella();
+  scrivi('');
+  scrivi(`${falliti ? 'CI SONO ERRORI' : 'TUTTO OK'}   ${superati} superati, ${falliti} falliti`,
+         falliti ? 'no' : 'ok');
+  window.__esito = { superati, falliti };
+}
+
+main().catch((e) => {
+  scrivi('ERRORE: ' + (e && e.stack ? e.stack : e), 'no');
+  window.__esito = { errore: String(e) };
+});
+</script>
