@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"
+     role="img" aria-label="FantaHacked">
+  <title>FantaHacked</title>
+  <!-- Tre rilanci che salgono, e la riga che li ferma. -->
+  
+  <g fill="#8fa3b8">
+    <rect x="20.0" y="59.0" width="14.0" height="20.0" rx="5.4"/>
+    <rect x="43.0" y="45.0" width="14.0" height="34.0" rx="5.4"/>
+    <rect x="66.0" y="31.0" width="14.0" height="48.0" rx="5.4"/>
+  </g>
+  <rect x="11.0" y="21.75" width="78.0" height="6.5"
+        rx="3.25" fill="#f5b63f"/>
+</svg>

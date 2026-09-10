@@ -49,6 +49,22 @@ uno per uno.</p>
   sbagliato.</span>
 </a>
 
+<a href="aste.html">
+  <b>Duecento aste intere</b>
+  <span>Le stesse duecento aste che gioca il programma per computer, con lo
+  stesso caso e gli stessi avversari, giocate qui. Non «risultati simili»:
+  la stessa partita, e le rose devono venire identiche una per una.</span>
+</a>
+
+<a href="casuale.html">
+  <b>Il caso, nelle due lingue</b>
+  <span>Perché quel confronto abbia senso il generatore casuale dev'essere lo
+  stesso: qui c'è il Mersenne Twister di Python tradotto, verificato valore
+  per valore su cinque semi.</span>
+</a>
+
 <p>Per rigenerare i file attesi, dal progetto del computer:</p>
 <p><code>python simulazioni/dump_equivalenza.py &lt;qui&gt;/prove/attesi.json</code><br>
-<code>python simulazioni/dump_consiglio.py &lt;qui&gt;/prove/attesi_consiglio.json</code></p>
+<code>python simulazioni/dump_consiglio.py &lt;qui&gt;/prove/attesi_consiglio.json</code><br>
+<code>python simulazioni/cento_aste.py 200</code> &rarr; copia
+<code>simulazioni/cento_aste_mercato.json</code> in <code>prove/attesi_aste.json</code></p>

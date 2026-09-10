@@ -4,20 +4,24 @@
    Il numero che conta - il limite - deve poterlo leggere anche chi la tiene
    sul tavolo. */
 
+/* Gli stessi colori del programma per computer, non "simili": chi passa
+   dall'uno all'altro fra un'asta e l'altra deve riconoscere lo stesso
+   programma, e soprattutto lo stesso verde e lo stesso rosso - li' sopra
+   sono verdetti, non decorazione. */
 :root {
-  --fondo:        #0d0f14;
-  --fondo-alto:   #141821;
-  --pannello:     #171c26;
-  --pannello-alt: #1d2330;
-  --linea:        #262d3b;
-  --testo:        #e8ebf1;
-  --testo-tenue:  #99a2b3;
-  --testo-fioco:  #6b7488;
+  --fondo:        #090D12;
+  --fondo-alto:   #121820;
+  --pannello:     #171F28;
+  --pannello-alt: #212C38;
+  --linea:        #253140;
+  --testo:        #EAF0F6;
+  --testo-tenue:  #A6B7C7;
+  --testo-fioco:  #7D90A2;
 
-  --ottimo:  #4ade80;
-  --medio:   #fbbf24;
-  --stop:    #f87171;
-  --accento: #f6a821;
+  --ottimo:  #46D093;
+  --medio:   #F5B63F;
+  --stop:    #FF6069;
+  --accento: #F5B63F;
 
   --raggio: 14px;
   --sicuro-alto:  env(safe-area-inset-top, 0px);
@@ -29,7 +33,7 @@
 html, body {
   margin: 0; padding: 0; height: 100%;
   background: var(--fondo); color: var(--testo);
-  font: 15px/1.45 -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+  font: 15px/1.45 Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
   overscroll-behavior-y: none;
 }
 
@@ -46,12 +50,22 @@ body { font-variant-numeric: tabular-nums; }
   align-items: center; justify-content: center; gap: 10px; padding: 24px;
   text-align: center;
 }
+.marchio-segno { display: block; width: 76px; height: 76px; margin-bottom: 4px; }
 .marchio { font-size: 30px; margin: 0; letter-spacing: -0.5px; font-weight: 700; }
+.marchio i { font-style: normal; color: var(--accento); }
+.barra-segno { width: 22px; height: 22px; display: block; flex: none; }
 .sottotitolo { margin: 0; color: var(--testo-tenue); }
 .stato { color: var(--testo-fioco); font-size: 14px; margin-top: 18px; }
 
+.testa-marchio {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 17px; font-weight: 700; letter-spacing: -.3px;
+  color: var(--testo); margin-bottom: 18px;
+}
+.testa-marchio i { font-style: normal; color: var(--accento); }
+
 .testa { padding: calc(20px + var(--sicuro-alto)) 18px 8px; }
-.testa h2 { margin: 0 0 6px; font-size: 21px; }
+.testa h2 { margin: 0 0 6px; font-size: 23px; letter-spacing: -.3px; }
 .corpo { padding: 8px 18px calc(28px + var(--sicuro-basso)); }
 
 .nota { color: var(--testo-fioco); font-size: 13px; line-height: 1.5; }

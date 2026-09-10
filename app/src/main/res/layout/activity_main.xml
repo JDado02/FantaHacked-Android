@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Una WebView e basta: l'applicazione e' dentro assets/web. -->
-<androidx.constraintlayout.widget.ConstraintLayout
+<!-- Una WebView e basta: l'applicazione e' dentro assets/web, e non c'e'
+     nient'altro da disporre. Un FrameLayout, non un ConstraintLayout: per un
+     figlio solo che riempie tutto sono la stessa cosa, e uno in meno e'
+     anche una libreria in meno da tirarsi dietro. -->
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -12,4 +15,4 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@color/fondo" />
-</androidx.constraintlayout.widget.ConstraintLayout>
+</FrameLayout>

@@ -618,6 +618,27 @@ export class Valutatore {
     return n ? out.slice(0, n) : out;
   }
 
+  /**
+   * Toglie un giocatore dal listone tenuto in memoria: e' stato chiamato e
+   * non l'ha voluto nessuno. Non tocca ne' l'asta ne' i dati - serve alle
+   * simulazioni, che devono poter chiudere un giro senza rimettere in lista
+   * chi e' gia' passato.
+   *
+   * Perche' un metodo e non `v.g.delete(id)`: `g` e `lista` sono lo stesso
+   * listone visto in due modi, uno per cercare per id e uno per scorrerlo in
+   * ordine, e **devono restare d'accordo**. Togliendo da uno solo il motore
+   * continua a proporre un giocatore che per meta' di se stesso non esiste
+   * piu', e una simulazione ci gira intorno all'infinito - e' successo.
+   */
+  scarta(giocatoreId) {
+    const x = this.g.get(giocatoreId);
+    if (!x) return null;
+    this.g.delete(giocatoreId);
+    const i = this.lista.indexOf(x);
+    if (i >= 0) this.lista.splice(i, 1);
+    return x;
+  }
+
   cerca(testo) {
     const t = String(testo || '').trim().toLowerCase();
     const venduti = this.stato.venduti();

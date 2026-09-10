@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Un'icona che dice quello che fa il programma: un numero con un tetto
-     sopra. Il tetto e' il limite, il numero e' quanto si puo' spingere. -->
+<!-- Il marchio: tre rilanci che salgono e la riga che li ferma.
+     Generato da build/marchio.py, la stessa geometria delle altre misure.
+     Disegnato dentro il riquadro sicuro di 72dp su 108: fuori di li' il
+     sistema ritaglia, e su certi telefoni gli angoli sparirebbero. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#f6a821"
-        android:pathData="M30,40 L78,40 L78,46 L30,46 Z" />
-    <path android:fillColor="#f6a821"
-        android:pathData="M50,52 L58,52 L58,72 L66,72 L54,84 L42,72 L50,72 Z" />
+    <path android:fillColor="#8fa3b8" android:pathData="M37.26,60.12 h2.20 a3.66,3.66 0 0 1 3.66,3.66 v6.28 a3.66,3.66 0 0 1 -3.66,3.66 h-2.20 a3.66,3.66 0 0 1 -3.66,-3.66 v-6.28 a3.66,3.66 0 0 1 3.66,-3.66 Z" />
+    <path android:fillColor="#8fa3b8" android:pathData="M52.90,50.60 h2.20 a3.66,3.66 0 0 1 3.66,3.66 v15.80 a3.66,3.66 0 0 1 -3.66,3.66 h-2.20 a3.66,3.66 0 0 1 -3.66,-3.66 v-15.80 a3.66,3.66 0 0 1 3.66,-3.66 Z" />
+    <path android:fillColor="#8fa3b8" android:pathData="M68.54,41.08 h2.20 a3.66,3.66 0 0 1 3.66,3.66 v25.32 a3.66,3.66 0 0 1 -3.66,3.66 h-2.20 a3.66,3.66 0 0 1 -3.66,-3.66 v-25.32 a3.66,3.66 0 0 1 3.66,-3.66 Z" />
+    <path android:fillColor="#f5b63f" android:pathData="M29.69,34.79 h48.62 a2.21,2.21 0 0 1 2.21,2.21 v0.00 a2.21,2.21 0 0 1 -2.21,2.21 h-48.62 a2.21,2.21 0 0 1 -2.21,-2.21 v-0.00 a2.21,2.21 0 0 1 2.21,-2.21 Z" />
 </vector>

@@ -1,0 +1,172 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>FantaHacked — duecento aste, dal telefono</title>
+<style>
+  body { font: 13px/1.55 ui-monospace, Menlo, Consolas, monospace;
+         background: #090D12; color: #EAF0F6; margin: 0; padding: 18px 22px; }
+  h1 { font-size: 15px; color: #A6B7C7; font-weight: 600; margin: 0 0 6px; }
+  p.intro { color: #7D90A2; max-width: 78ch; margin: 0 0 16px; }
+  .ok { color: #46D093; } .no { color: #FF6069; } .tit { color: #F5B63F; }
+  pre { white-space: pre-wrap; margin: 0; }
+  .avanzamento { color: #7D90A2; }
+</style>
+<h1>Duecento aste, giocate dal motore di questa applicazione</h1>
+<p class="intro">Gli stessi semi del programma per computer, lo stesso
+generatore casuale, gli stessi avversari: se i due motori giocano davvero
+allo stesso modo, le rose devono venire identiche una per una — non
+«statisticamente simili».</p>
+<pre id="esito">avvio…</pre>
+
+<script type="module">
+const q = '?v=' + Date.now();
+const { carica: caricaRegole } = await import('../web/motore/regole.js' + q);
+const { da: datiDa } = await import('../web/motore/dati.js' + q);
+const { StatoAsta } = await import('../web/motore/asta.js' + q);
+const { Valutatore } = await import('../web/motore/valutazione.js' + q);
+const { Ottimizzatore } = await import('../web/motore/ottimizzatore.js' + q);
+const { Modificatore } = await import('../web/motore/modificatore.js' + q);
+const { giocaAsta, posto, NOMI, RUOLI } = await import('./simulatore.js' + q);
+
+const out = document.getElementById('esito');
+const righe = [];
+const scrivi = (t, c) => { righe.push(c ? `<span class="${c}">${t}</span>` : t);
+                           out.innerHTML = righe.join('\n'); };
+const sostituisci = (t, c) => { righe[righe.length - 1] =
+  c ? `<span class="${c}">${t}</span>` : t; out.innerHTML = righe.join('\n'); };
+
+const QUANTE = parseInt(new URLSearchParams(location.search).get('n') || '200', 10);
+
+function mediana(v) {
+  const s = v.slice().sort((a, b) => a - b);
+  const m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+async function main() {
+  const grezzi = await (await fetch('dati/dati.json')).json();
+  const regoleJson = grezzi.regole
+    || await (await fetch('dati/regole_lega.json')).json();
+  const dati = datiDa(grezzi);
+
+  const ctx = {
+    Regole: caricaRegole, StatoAsta, Valutatore, Ottimizzatore, Modificatore,
+    dati, regoleJson,
+  };
+
+  const semi = Array.from({ length: QUANTE }, (_, i) => 1000 + 7 * i);
+  const esiti = [];
+  const t0 = performance.now();
+  scrivi('');
+  for (let i = 0; i < semi.length; i += 1) {
+    esiti.push(giocaAsta(semi[i], ctx));
+    if (i % 2 === 0 || i === semi.length - 1) {
+      const fatte = i + 1;
+      const per = (performance.now() - t0) / fatte;
+      sostituisci(`  ${fatte} / ${semi.length} aste — ${(per / 1000).toFixed(1)} s l'una, `
+                + `mancano ${Math.round((per * (semi.length - fatte)) / 1000)} s`,
+                'avanzamento');
+      await new Promise((r) => setTimeout(r, 0));   // lascia respirare la pagina
+    }
+  }
+  const secondi = (performance.now() - t0) / 1000;
+  sostituisci(`  ${semi.length} aste in ${Math.round(secondi)} s `
+            + `(${(secondi / semi.length).toFixed(1)} s l'una)`, 'avanzamento');
+
+  // ------------------------------------------------------------- relazione
+  const piazz = esiti.map(posto);
+  const punti = esiti.map((e) => e.punti[NOMI[0]]);
+  const scarti = esiti.map((e) => {
+    const altri = NOMI.slice(1).map((n) => e.punti[n]);
+    return e.punti[NOMI[0]] - Math.max(...altri);
+  });
+  const vinte = piazz.filter((p) => p === 1).length;
+  scrivi('');
+  scrivi('='.repeat(64));
+  scrivi(`DUECENTO ASTE DAL TELEFONO  (avversari ancorati al mercato)`, 'tit');
+  scrivi('='.repeat(64));
+  scrivi(`  vinte              ${vinte} su ${esiti.length}  `
+       + `(${Math.round((100 * vinte) / esiti.length)}%)`);
+  scrivi(`  podio              ${piazz.filter((p) => p <= 3).length} su ${esiti.length}`);
+  scrivi(`  piazzamento medio  ${(piazz.reduce((a, b) => a + b, 0) / piazz.length).toFixed(2)}`);
+  scrivi(`  peggior asta       ${Math.max(...piazz)} posto`);
+  scrivi(`  punti mediani      ${Math.round(mediana(punti))}   `
+       + `(min ${Math.round(Math.min(...punti))}, max ${Math.round(Math.max(...punti))})`);
+  scrivi(`  scarto dal secondo ${Math.round(mediana(scarti)) >= 0 ? '+' : ''}`
+       + `${Math.round(mediana(scarti))} punti mediano`);
+  scrivi('');
+  scrivi('  Come spende il motore');
+  const cred = 500;
+  const media = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+  for (const r of RUOLI) {
+    // Media, non mediana: e' quello che stampa il programma per computer, e
+    // due righe che dicono la stessa cosa con due statistiche diverse sono
+    // il modo piu' rapido di credere a una differenza che non c'e'.
+    const s = esiti.map((e) => e.spesa[r]);
+    scrivi(`    ${r}  ${((100 * media(s)) / cred).toFixed(1)}% del budget   `
+         + `(${Math.round(media(s))} crediti, da ${Math.min(...s)} a ${Math.max(...s)})`);
+  }
+  const av = esiti.map((e) => e.avanzati);
+  scrivi(`    crediti non spesi  ${(av.reduce((a, b) => a + b, 0) / av.length).toFixed(1)} in media`
+       + `  (peggio: ${Math.max(...av)})`);
+  const incomplete = esiti.filter(
+    (e) => RUOLI.reduce((s, r) => s + e.slot[r], 0) < 25).length;
+  scrivi(`    rose incomplete    ${incomplete} su ${esiti.length}`);
+  const sopra = esiti.reduce(
+    (s, e) => s + e.limiti.filter((l) => l[1] > l[0]).length, 0);
+  scrivi(`    pagati sopra il proprio limite  ${sopra}`);
+
+  // ------------------------------------------- confronto col programma PC
+  scrivi('');
+  let attesi = null;
+  try { attesi = await (await fetch('attesi_aste.json')).json(); } catch (e) { /* niente */ }
+  if (!attesi) {
+    scrivi('  (nessun file di confronto: genera attesi_aste.json dal programma '
+         + 'per computer con  python simulazioni/cento_aste.py 200)', 'tit');
+  } else {
+    scrivi('CONFRONTO CON LE STESSE ASTE GIOCATE DAL COMPUTER', 'tit');
+    const perSeme = new Map(attesi.esiti.map((e) => [e.seme, e]));
+    let confrontate = 0, diverse = 0, numeri = 0;
+    const dettagli = [];
+    for (const e of esiti) {
+      const a = perSeme.get(e.seme);
+      if (!a) continue;
+      confrontate += 1;
+      let diff = 0;
+      for (const n of NOMI) {
+        numeri += 2;
+        if (Math.abs(a.punti[n] - e.punti[n]) > 1e-6 * Math.max(1, Math.abs(a.punti[n]))) diff += 1;
+        if (Math.abs(a.senza_modificatore[n] - e.senza_modificatore[n]) > 1e-6) diff += 1;
+      }
+      for (const r of RUOLI) {
+        numeri += 2;
+        if (a.spesa[r] !== e.spesa[r]) diff += 1;
+        if (a.slot[r] !== e.slot[r]) diff += 1;
+      }
+      if (diff) {
+        diverse += 1;
+        if (dettagli.length < 6) {
+          dettagli.push(`    seme ${e.seme}: ${diff} valori diversi   `
+            + `punti ${Math.round(a.punti.Davide)} -> ${Math.round(e.punti.Davide)}`);
+        }
+      }
+    }
+    scrivi(`  aste confrontate   ${confrontate}`);
+    scrivi(`  numeri confrontati ${numeri}`);
+    if (diverse) {
+      scrivi(`  aste diverse       ${diverse}`, 'no');
+      dettagli.forEach((d) => scrivi(d, 'no'));
+    } else {
+      scrivi(`  aste diverse       0`, 'ok');
+    }
+    scrivi('');
+    scrivi(diverse
+      ? `LE DUE APPLICAZIONI NON GIOCANO UGUALE   ${diverse} aste su ${confrontate}`
+      : `IDENTICHE   ${confrontate} aste, ${numeri} numeri, zero differenze`,
+      diverse ? 'no' : 'ok');
+  }
+  window.__esito = { vinte, aste: esiti.length };
+  window.__esiti = esiti;
+}
+
+main().catch((e) => scrivi('ERRORE: ' + (e && e.stack ? e.stack : e), 'no'));
+</script>

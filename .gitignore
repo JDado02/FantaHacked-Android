@@ -18,5 +18,10 @@ local.properties
 .idea/
 captures/
 
+# Il risultato delle duecento aste giocate dal programma per computer: un
+# mega che si rifa' in dieci minuti e cambia a ogni aggiornamento dei dati.
+# Come rigenerarlo lo dice prove/index.html.
+prove/attesi_aste.json
+
 # I dati veri non stanno qui: si scaricano da DBFantaHacked.
 # Quelli in prove/dati servono solo alle prove di equivalenza, e ci stanno.

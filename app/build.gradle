@@ -45,8 +45,15 @@ android {
 }
 
 dependencies {
+    // Tutte le librerie che passano di qui portano Kotlin, e ne portano
+    // versioni diverse: appcompat chiedeva stdlib-jdk7/jdk8 1.6.21 e webkit
+    // stdlib 1.8.22, che dalla 1.8 contiene gia' quei due - e il compilatore
+    // si fermava su duecento classi duplicate. Questa riga le allinea tutte
+    // a una versione sola. Non e' una dipendenza in piu': e' un accordo su
+    // quale versione usare.
+    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.9.24')
+
     implementation 'androidx.appcompat:appcompat:1.7.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     // Serve a servire gli assets su un indirizzo https finto: senza, la
     // pagina non ha un'origine e non puo' scaricare niente.
     implementation 'androidx.webkit:webkit:1.11.0'

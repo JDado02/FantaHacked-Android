@@ -67,6 +67,21 @@ Lo stato attuale:
 | prezzi, VOR, modificatore, curve, knapsack, limiti, verdetti | **22.356 confronti, 0 differenze** |
 | le cinque liste dei consigli, nomi e ordine compresi | **44 liste, 0 differenze** |
 | le regole dell'asta sul telefono (`prove/applicazione.html`) | **33 verifiche, 0 fallite** |
+| il generatore casuale di Python, tradotto (`prove/casuale.html`) | **35 confronti, 0 differenze** |
+| duecento aste intere, qui e sul computer (`prove/aste.html`) | **200 aste, 4.800 numeri, 0 differenze** |
+
+Le ultime due sono la prova più grossa. Che i due motori calcolino uguale in
+quattro momenti scelti a tavolino non dice ancora che **giochino** uguale:
+un'asta sono duecento chiamate una dopo l'altra, e basta un rilancio diverso a
+metà reparto perché da lì in poi ogni squadra prenda giocatori diversi. Per
+poterlo chiedere, le due simulazioni devono giocare *la stessa* partita — e
+quindi il generatore casuale di Python è tradotto in JavaScript riga per riga,
+Mersenne Twister compreso, con le stesse condizioni di rifiuto: cambiarne una
+vorrebbe dire consumare un numero casuale in più o in meno, e le due aste
+divergerebbero senza che nessuno dei due programmi abbia sbagliato niente.
+
+Duecento aste per parte, stessi semi: 188 vinte da una parte, 188 dall'altra,
+e ogni rosa identica.
 
 La terza pagina chiede un'altra cosa. Che i due motori calcolino uguale non
 dice niente su cosa succede quando l'applicazione si chiude a metà asta, si
@@ -145,11 +160,18 @@ elaborato di perderla.
 
 ---
 
-## Costruire l'apk
+## L'apk
 
-Il progetto è completo e pronto a compilare, ma **l'apk non è ancora stato
-costruito qui**: servono l'SDK Android e l'accettazione delle sue licenze, che
-è un contratto con Google e lo firma chi installa.
+`app/build/outputs/apk/debug/app-debug.apk` — **3,4 MB**, Android 7 (`minSdk
+24`) o più recente. Si installa copiandolo sul telefono e aprendolo: la prima
+volta Android chiede di consentire l'installazione da fonte sconosciuta per
+il gestore file che lo apre. Con il telefono collegato e il debug USB attivo:
+
+```bash
+strumenti/sdk/platform-tools/adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+### Ricostruirlo
 
 Da un computer Windows senza niente installato tranne un JDK 17:
 

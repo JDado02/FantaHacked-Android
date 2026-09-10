@@ -10,7 +10,7 @@
 // l'apk - ma non da' fastidio, ed e' quello che rende la stessa cartella
 // installabile anche dal browser.
 
-const VERSIONE = 'fantahacked-1';
+const VERSIONE = 'fantahacked-2';
 const MIEI = [
   './',
   './index.html',
@@ -18,6 +18,10 @@ const MIEI = [
   './app.js',
   './regole_lega.json',
   './manifesto.webmanifest',
+  './marchio.svg',
+  './marchio-piatto.svg',
+  './marchio-192.png',
+  './marchio-512.png',
   './motore/comune.js',
   './motore/regole.js',
   './motore/modificatore.js',
