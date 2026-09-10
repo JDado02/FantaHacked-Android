@@ -54,7 +54,8 @@ python simulazioni/dump_consiglio.py    .../prove/attesi_consiglio.json
 
 # poi, da qui
 python -m http.server 8790
-# e si aprono nel browser:
+# e si apre nel browser prove/index.html, che porta alle tre pagine:
+#   prove/applicazione.html           le regole dell'asta
 #   prove/equivalenza.html            i numeri
 #   prove/equivalenza_consiglio.html  le liste
 ```
@@ -65,6 +66,19 @@ Lo stato attuale:
 |---|---|
 | prezzi, VOR, modificatore, curve, knapsack, limiti, verdetti | **22.356 confronti, 0 differenze** |
 | le cinque liste dei consigli, nomi e ordine compresi | **44 liste, 0 differenze** |
+| le regole dell'asta sul telefono (`prove/applicazione.html`) | **33 verifiche, 0 fallite** |
+
+La terza pagina chiede un'altra cosa. Che i due motori calcolino uguale non
+dice niente su cosa succede quando l'applicazione si chiude a metà asta, si
+annulla un acquisto sbagliato, o manca un solo posto e i crediti sono finiti:
+sono le regole che se saltano non si vede un numero sbagliato, si perde una
+serata. Fra le altre: l'asta si ritrova al riavvio, l'annullo rimette i crediti
+e libera il giocatore, lo stesso giocatore non si compra due volte, e chi non è
+iscritto alla lista di serie A resta a limite zero **anche a fine asta**,
+quando la regola degli ultimi posti ripescherebbe chiunque pur di non lasciare
+una casella vuota — con ventiquattro slot pieni e un credito in mano, il limite
+è 1 su chi è in lista e 0 su chi non c'è. Lo stesso, numero per numero, che
+risponde il motore Python.
 
 La soglia è un milionesimo in relativo, e zero sui numeri interi.
 
@@ -133,7 +147,10 @@ elaborato di perderla.
 
 ## Costruire l'apk
 
-Serve **Android Studio** (o l'SDK da riga di comando). Il progetto è pronto:
+Il progetto è completo e pronto a compilare, ma **l'apk non è ancora stato
+costruito qui**: servono l'SDK Android e l'accettazione delle sue licenze, che
+non si possono dare al posto di chi installa. Con Android Studio (o l'SDK da
+riga di comando) è un comando solo:
 
 ```bash
 ./gradlew assembleDebug      # app/build/outputs/apk/debug/app-debug.apk
@@ -158,5 +175,12 @@ l'esterno: l'app non riuscirebbe **mai** a scaricare i dati.
 python -m http.server 8790
 ```
 
-e si apre `http://127.0.0.1:8790/web/`. È la stessa applicazione: sul telefono
-si può anche installare dal browser (è una PWA) e funziona offline.
+e si apre `http://127.0.0.1:8790/web/`. È la stessa applicazione che finisce
+nell'apk, non una versione ridotta.
+
+**E si usa già così, dal telefono, senza apk.** Sulla stessa rete wifi si apre
+`http://<indirizzo-del-computer>:8790/web/` (`ipconfig` dice l'indirizzo), e da
+lì il browser propone «aggiungi a schermata home»: diventa un'icona, si apre a
+schermo intero e — passato il primo caricamento — funziona anche se il wifi
+cade, perché i dati e il codice restano nel telefono. L'asta è comunque salvata
+in locale, quindi il computer può anche spegnersi a metà.
