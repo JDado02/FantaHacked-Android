@@ -1,9 +1,21 @@
-* text=auto
-*.java text
-*.js text
-*.html text
-*.css text
-*.md text
-*.json text
-*.xml text
-*.gradle text
+# Fine riga: LF dappertutto, anche nella copia di lavoro su Windows.
+#
+# Stessa ragione del repository per computer: `core.autocrlf=true` converte in
+# CRLF quello che esce dal repository, e il file impacchettato non e' piu'
+# quello committato. Su un `index.html` identico byte per byte, quella sola
+# differenza ha fatto scattare Windows Defender. Qui i file finiscono dentro
+# un apk, ma il principio non cambia: quello che si pubblica dev'essere quello
+# che si e' visto.
+* text=auto eol=lf
+
+# I binari non si toccano.
+*.png  binary
+*.jpg  binary
+*.ico  binary
+*.pdf  binary
+*.db   binary
+*.gz   binary
+*.zip  binary
+*.apk  binary
+*.jar  binary
+*.keystore binary
