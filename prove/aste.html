@@ -82,7 +82,7 @@ async function main() {
   const vinte = piazz.filter((p) => p === 1).length;
   scrivi('');
   scrivi('='.repeat(64));
-  scrivi(`DUECENTO ASTE DAL TELEFONO  (avversari ancorati al mercato)`, 'tit');
+  scrivi(`${esiti.length} ASTE DAL TELEFONO  (avversari ancorati al mercato)`, 'tit');
   scrivi('='.repeat(64));
   scrivi(`  vinte              ${vinte} su ${esiti.length}  `
        + `(${Math.round((100 * vinte) / esiti.length)}%)`);
@@ -94,8 +94,27 @@ async function main() {
   scrivi(`  scarto dal secondo ${Math.round(mediana(scarti)) >= 0 ? '+' : ''}`
        + `${Math.round(mediana(scarti))} punti mediano`);
   scrivi('');
+  // Lo stesso conto col metro che tiene conto di chi gioca davvero.
+  const piazzS = esiti.map((e) => {
+    const d = e.schierati || {};
+    const mio = d[NOMI[0]];
+    return 1 + NOMI.slice(1).filter((n) => d[n] > mio).length;
+  });
+  const puntiS = esiti.map((e) => (e.schierati || {})[NOMI[0]]);
+  if (puntiS.every((x) => x !== undefined)) {
+    scrivi('');
+    scrivi('  Con il metro che conta solo chi si riesce a schierare');
+    scrivi(`    vinte            ${piazzS.filter((p) => p === 1).length} su `
+         + `${esiti.length}  (${Math.round(
+             (100 * piazzS.filter((p) => p === 1).length) / esiti.length)}%)`);
+    scrivi(`    piazzamento medio  `
+         + `${(piazzS.reduce((a, b) => a + b, 0) / piazzS.length).toFixed(2)}`);
+    scrivi(`    punti mediani      ${Math.round(mediana(puntiS))}`);
+  }
+
+  scrivi('');
   scrivi('  Come spende il motore');
-  const cred = 500;
+  const cred = regoleJson.crediti_iniziali;
   const media = (v) => v.reduce((a, b) => a + b, 0) / v.length;
   for (const r of RUOLI) {
     // Media, non mediana: e' quello che stampa il programma per computer, e
@@ -136,6 +155,14 @@ async function main() {
         numeri += 2;
         if (Math.abs(a.punti[n] - e.punti[n]) > 1e-6 * Math.max(1, Math.abs(a.punti[n]))) diff += 1;
         if (Math.abs(a.senza_modificatore[n] - e.senza_modificatore[n]) > 1e-6) diff += 1;
+        // Il punteggio schierato passa per una convoluzione e un ordine
+        // statistico: su numeri cosi' la tolleranza relativa e' l'unico
+        // confronto onesto fra due virgole mobili diverse.
+        if (a.schierati && e.schierati) {
+          numeri += 1;
+          if (Math.abs(a.schierati[n] - e.schierati[n])
+              > 1e-6 * Math.max(1, Math.abs(a.schierati[n]))) diff += 1;
+        }
       }
       for (const r of RUOLI) {
         numeri += 2;

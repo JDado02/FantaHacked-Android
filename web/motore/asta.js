@@ -33,9 +33,43 @@ export class StatoAsta {
       acquisti: [],
       turno: 1,
       prossimo_seq: 1,
+      // **Il regolamento viaggia con l'asta.** Un'asta si gioca fino in fondo
+      // con le regole con cui e' cominciata: sono scritte qui dal primo
+      // istante. Cambiare i crediti a meta' serata e vedersi ricalcolare
+      // all'indietro tutti i limiti gia' spesi non sarebbe una comodita',
+      // sarebbe un modo di perdere l'asta.
+      regole: this.reg.grezzo ? this.reg.grezzo() : null,
     };
     this.salva();
     return this;
+  }
+
+  /** Le regole con cui questa asta e' cominciata, se ci sono. */
+  regoleSalvate() { return (this.d && this.d.regole) || null; }
+
+  /** Cambia i nomi senza toccare rose, crediti e acquisti. */
+  rinomina(nomi) {
+    const puliti = [];
+    (nomi || []).forEach((x, i) => {
+      const t = String(x === null || x === undefined ? '' : x).trim();
+      puliti.push(t || (i === 0 ? 'Io' : 'Squadra ' + (i + 1)));
+    });
+    if (puliti.length !== this.d.presidenti.length) {
+      throw new ErroreAsta('servono ' + this.d.presidenti.length + ' nomi, non '
+                           + puliti.length);
+    }
+    // Due squadre con lo stesso nome sono un modo sicuro di registrare un
+    // acquisto sulla rosa sbagliata: il numero le distingue.
+    const visti = new Map();
+    puliti.forEach((nome, i) => {
+      const chiave = nome.toLowerCase();
+      const quante = (visti.get(chiave) || 0) + 1;
+      visti.set(chiave, quante);
+      if (quante > 1) puliti[i] = nome + ' ' + quante;
+    });
+    this.d.presidenti.forEach((p, i) => { p.nome = puliti[i]; });
+    this.salva();
+    return this.presidenti();
   }
 
   esiste() {

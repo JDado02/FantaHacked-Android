@@ -20,6 +20,46 @@ e da lì in poi funziona anche senza rete.
 
 ---
 
+## Che cosa fa
+
+Tutto quello che fa il programma per computer. Non è un modo di dire: è lo
+stesso motore, e da questa versione anche le stesse funzioni.
+
+**Prima di cominciare** si sceglie il regolamento: quante squadre, quanti
+crediti a testa, modificatore di difesa sì o no, secondo e terzo portiere
+assegnati in automatico. Toccarne uno rifà **tutti i prezzi** — il livello di
+rimpiazzo, il valore e il limite di ogni giocatore — e c'è una prova che lo
+verifica su quattro regolamenti diversi, dalle sei alle venti squadre, contro i
+numeri del motore Python. I nomi delle squadre sono già compilati («Io»,
+«Squadra 2»…) e si sovrascrivono.
+
+**Durante l'asta**, in tre schede:
+
+| | |
+|---|---|
+| **Chiama** | chi chiamare e fino a quanto, in quattro liste: da prendere, alternative, da far pagare agli altri, da evitare. In cima, quante caselle della formazione stai già coprendo |
+| **Listone** | tutti i seicento giocatori, cercabili, filtrabili per ruolo, ordinabili per costo, valore, presenze, media voto, quotazione o nome, con chi li ha già comprati e a quanto |
+| **Rosa** | i tuoi crediti, la copertura reparto per reparto, la tua rosa, l'undici che riusciresti a schierare e con che modulo, il rischio di restare in dieci, il piano di spesa coi nomi su cui puntare, le rose degli avversari, e il tasto per rinominare le squadre |
+
+In alto stanno sempre il reparto in chiamata con quante caselle restano, il
+turno di chiamata (si passa al successivo con un tocco, o si assegna a chi
+vuoi aprendo la sua rosa), e un attrezzo da collaudo: **completa reparto**,
+che riempie per tutti il reparto in corso prendendo per te i primi della lista
+dei consigli, uno alla volta, coi conti rifatti dopo ognuno. Serve a portare
+l'asta in un secondo al punto che si vuole guardare; è tratteggiato e chiede
+conferma, perché un tocco di troppo la sera giusta costerebbe la serata.
+
+### Prima chi gioca, poi chi conviene
+
+La regola che decide l'ordine delle liste, ed è la stessa del computer. La rosa
+ha otto difensori, ma in campo ne vanno **quattro ogni domenica**: finché quel
+nucleo non è coperto, un giocatore da mezzo campionato non può stare sopra uno
+su cui si costruisce la formazione, per quanto convenga. Quante caselle copri
+davvero non è una soglia: è il valore atteso esatto, calcolato dalle presenze
+attese di chi hai preso.
+
+---
+
 ## Com'è fatto
 
 ```
@@ -29,13 +69,15 @@ web/                     l'applicazione: e' questa che finisce nell'apk
 ├── app.js               solo quello che si vede e si tocca
 ├── servizio.js          fa aprire l'app anche senza rete
 └── motore/              il motore, tradotto dal Python
-    ├── regole.js
+    ├── regole.js            il regolamento, e i quattro valori che si scelgono
     ├── modificatore.js
+    ├── formazione.js        quante caselle riesci a riempire ogni giornata
     ├── asta.js
     ├── dati.js
     ├── valutazione.js
     ├── ottimizzatore.js
-    └── strategia.js
+    ├── strategia.js
+    └── equilibrio.js        l'undici, le coperture, il rischio di restare in dieci
 
 app/                     l'involucro Android: una WebView e basta
 prove/                   le prove di equivalenza col motore Python
@@ -57,9 +99,23 @@ Riscriverlo in un'altra lingua è il modo più facile di perdere quella taratura
 senza accorgersene: nessun numero è palesemente sbagliato, semplicemente non
 sono più gli stessi.
 
-Quindi il motore Python **fotografa** i propri numeri in quattro momenti
-diversi di un'asta — vuota, dopo dieci acquisti, a metà, quasi finita — e la
-pagina di prova li rilegge e li confronta uno per uno:
+Quindi il motore Python **fotografa** i propri numeri e la pagina di prova li
+rilegge e li confronta uno per uno. Sei momenti, non quattro: l'asta vuota,
+dopo dieci acquisti, a metà, quasi finita, e due **scene costruite a mano** —
+i miei portieri finiti mentre la lega è ancora sui portieri, e la difesa
+scoperta a metà reparto. Sono le due situazioni su cui il programma ha davvero
+sbagliato, e per caso in una sequenza casuale non capitano. Una scena
+costruita a mano non è meno onesta di una casuale: è più onesta, perché è la
+scena su cui il programma ha sbagliato.
+
+E tutto si ripete su **quattro regolamenti diversi** — sei squadre e
+quattrocento crediti col modificatore spento, venti squadre, dieci squadre coi
+portieri uno per uno, e quello del pacchetto. Da quando quei valori si
+scelgono dall'applicazione, verificarne uno solo non dice più niente sugli
+altri: il numero di squadre fissa il livello di rimpiazzo e i crediti fissano
+la scala dei prezzi.
+
+I comandi:
 
 ```bash
 # dal progetto del computer
@@ -78,14 +134,14 @@ Lo stato attuale:
 
 | | |
 |---|---|
-| prezzi, VOR, modificatore, curve, knapsack, limiti, verdetti | **22.356 confronti, 0 differenze** |
-| le cinque liste dei consigli, nomi e ordine compresi | **44 liste, 0 differenze** |
-| le regole dell'asta sul telefono (`prove/applicazione.html`) | **33 verifiche, 0 fallite** |
+| prezzi, VOR, modificatore, curve, knapsack, limiti, verdetti, quadro della rosa — su sei momenti e quattro regolamenti | **54.020 confronti, 0 differenze** |
+| le cinque liste dei consigli, nomi, ordine, copertura e frasi comprese | **102 liste, 0 differenze** |
+| le regole dell'asta sul telefono (`prove/applicazione.html`) | **74 verifiche, 0 fallite** |
 | il generatore casuale di Python, tradotto (`prove/casuale.html`) | **35 confronti, 0 differenze** |
-| duecento aste intere, qui e sul computer (`prove/aste.html`) | **200 aste, 4.800 numeri, 0 differenze** |
+| 500 aste intere, qui e sul computer (`prove/aste.html`) | **500 aste, 16.000 numeri, 0 differenze** |
 
-Le ultime due sono la prova più grossa. Che i due motori calcolino uguale in
-quattro momenti scelti a tavolino non dice ancora che **giochino** uguale:
+Le ultime due sono la prova più grossa. Che i due motori calcolino uguale nei
+momenti scelti a tavolino non dice ancora che **giochino** uguale:
 un'asta sono duecento chiamate una dopo l'altra, e basta un rilancio diverso a
 metà reparto perché da lì in poi ogni squadra prenda giocatori diversi. Per
 poterlo chiedere, le due simulazioni devono giocare *la stessa* partita — e
@@ -94,10 +150,13 @@ Mersenne Twister compreso, con le stesse condizioni di rifiuto: cambiarne una
 vorrebbe dire consumare un numero casuale in più o in meno, e le due aste
 divergerebbero senza che nessuno dei due programmi abbia sbagliato niente.
 
-Duecento aste per parte, stessi semi: 188 vinte da una parte, 188 dall'altra,
-e ogni rosa identica.
+500 aste per parte, stessi semi, e ogni rosa identica. Dalla versione di oggi
+si confronta anche il punteggio **schierato**, quello che conta giornata per
+giornata chi ha preso voto e lascia a zero le caselle che nessuno riempie:
+sarebbe stato strano verificare metà di quello che il programma per computer
+misura.
 
-La terza pagina chiede un'altra cosa. Che i due motori calcolino uguale non
+La pagina delle regole dell'asta chiede un'altra cosa. Che i due motori calcolino uguale non
 dice niente su cosa succede quando l'applicazione si chiude a metà asta, si
 annulla un acquisto sbagliato, o manca un solo posto e i crediti sono finiti:
 sono le regole che se saltano non si vede un numero sbagliato, si perde una
@@ -135,7 +194,18 @@ la matematica.
 
 ### E le differenze di lingua
 
-Due, entrambe silenziose:
+Tre, tutte silenziose:
+
+- **`round(30.5)` in Python fa 30, `Math.round(30.5)` in JavaScript fa 31.**
+  È la stessa regola del punto qui sotto, ma si è vista solo dopo: le
+  cinquecento aste per parte sono venute identiche in tutto — stesse rose,
+  stessi prezzi, stessi punti — tranne nel punteggio che conta solo chi si
+  riesce a schierare. Due giocatori su otto rose avevano **esattamente** 30,5
+  e 28,5 presenze attese, e lì le due lingue si dividono. Non è un caso raro:
+  le presenze nascono da `titolarità × 38`, e sul mezzo punto ci cadono
+  spesso. Adesso anche l'interfaccia arrotonda come Python, altrimenti il
+  telefono scriverebbe «31 presenze attese» dove il computer scrive 30, sullo
+  stesso giocatore.
 
 - **`Math.round(2.5)` fa 3, `round(2.5)` in Python fa 2.** Il costo di ogni
   giocatore nel piano è un arrotondamento, e un credito cambia il percorso
@@ -159,6 +229,14 @@ proiezioni dipendono dal regolamento e quest'app non sa rifarle — porta il
 motore di valutazione, non quello delle proiezioni. Con regole diverse da
 quelle che hanno prodotto quei numeri mostrerebbe cifre sbagliate senza modo di
 accorgersene, quindi le due cose arrivano insieme o non arrivano.
+
+Con quattro eccezioni, e vale la pena dire perché sono eccezioni. Quante
+squadre, quanti crediti, modificatore di difesa e portieri a pacchetto **non
+entrano nel calcolo delle proiezioni**: le presenze attese, la media voto e la
+fantamedia di un giocatore sono le stesse in una lega da sei e in una da venti.
+Entrano solo nel motore di valutazione, che qui c'è tutto — ed è per questo che
+quei quattro si possono scegliere dall'applicazione senza mentire, mentre un
+gol di difensore da 4 a 3 vorrebbe dire rifare le proiezioni e non si può.
 
 **Se internet non c'è, l'app si apre lo stesso** con i dati che ha già. Sei
 secondi di attesa massima, poi si va avanti. Nella stanza dell'asta il wifi fa

@@ -19,6 +19,7 @@ import { StatoAsta } from '../web/motore/asta.js';
 import { Valutatore } from '../web/motore/valutazione.js';
 import { Ottimizzatore } from '../web/motore/ottimizzatore.js';
 import { Consigliere } from '../web/motore/strategia.js';
+import { Equilibrio } from '../web/motore/equilibrio.js';
 
 const out = document.getElementById('esito');
 const righe = [];
@@ -137,6 +138,35 @@ async function main() {
       confronta(x.nome, utilita, dec.utilita, 'utilita');
     }
 
+    // Il quadro della rosa si confronta intero, come testo: dentro ci sono
+    // numeri, elenchi ordinati e frasi, e ognuna delle tre puo' sbagliare per
+    // conto suo. Un undici con gli stessi nomi in un altro ordine e' un
+    // difetto tanto quanto un punteggio diverso.
+    if (tappa.dati.equilibrio) {
+      const e = new Equilibrio(v, o);
+      const mio = e.quadro();
+      const atteso = JSON.stringify(tappa.dati.equilibrio);
+      const avuto = JSON.stringify(mio);
+      if (atteso === avuto) { superati += 1; }
+      else {
+        falliti += 1;
+        // Si cerca il primo campo che differisce, altrimenti il messaggio e'
+        // un muro di JSON in cui non si trova niente.
+        let dove = 'quadro';
+        for (const k of Object.keys(tappa.dati.equilibrio)) {
+          if (JSON.stringify(tappa.dati.equilibrio[k]) !== JSON.stringify(mio[k])) {
+            dove = 'quadro.' + k;
+            break;
+          }
+        }
+        peggiori.push({ nome: `tappa ${t}`, chiave: dove, scarto: 1,
+                        atteso: JSON.stringify(
+                          tappa.dati.equilibrio[dove.split('.')[1]] ?? null).slice(0, 300),
+                        avuto: JSON.stringify(
+                          mio[dove.split('.')[1]] ?? null).slice(0, 300) });
+      }
+    }
+
     const nuoviFalliti = falliti - primaFalliti;
     scrivi(`  tappa ${t}: ${tappa.acquisti.length} acquisti, `
          + `${Math.round(t1 - t0)} ms per costruire il motore, `
@@ -153,6 +183,62 @@ async function main() {
            + ` atteso ${p.atteso}   avuto ${p.avuto}`, 'no');
     }
   }
+  // --- gli stessi conti con altri regolamenti ---------------------------
+  //
+  // Quante squadre e quanti crediti si scelgono dalla schermata iniziale, e
+  // rifanno **tutti** i prezzi: il livello di rimpiazzo, la curva, i budget
+  // per reparto, i limiti. Se i due motori applicassero quei numeri in modo
+  // anche solo leggermente diverso, il telefono e il computer direbbero due
+  // cifre diverse sullo stesso giocatore nella stessa lega.
+  for (const caso of (attesi.regolamenti || [])) {
+    const reg2 = caricaRegole(regoleJson, caso.modifiche);
+    const st2 = new StatoAsta(reg2, null);
+    st2.inizializza(caso.nomi.slice(1), caso.nomi[0]);
+    st2.collega(new Map(dati.giocatori.map((g) => [g.id, g])));
+    const v2 = new Valutatore(dati, reg2, st2);
+    const o2 = new Ottimizzatore(v2);
+    const c2 = new Consigliere(v2, o2);
+
+    const prima = falliti;
+    const etichetta = Object.keys(caso.modifiche).length
+      ? Object.entries(caso.modifiche).map(([k, v]) => k + '=' + v).join(' ')
+      : 'quello del pacchetto';
+    const g = caso.dati.globali;
+    confronta(etichetta, g.vor_totale, v2.vor_totale, 'vor_totale');
+    confronta(etichetta, g.densita, v2._densita, 'densita');
+    confronta(etichetta, g.pool_discrezionale, v2.pool_discrezionale, 'pool');
+    confronta(etichetta, g.opt, o2.opt(), 'opt');
+    for (const r of ['P', 'D', 'C', 'A']) {
+      confronta(etichetta + ' ' + r, g.rimpiazzo_fm[r], v2.rimpiazzo_fm[r], 'rimpiazzo');
+      confronta(etichetta + ' ' + r, g.budget_ruolo[r], v2.budget_ruolo[r], 'budget_mercato');
+      confronta(etichetta + ' ' + r, g.budget_piano[r], v2.budget_piano[r], 'budget_piano');
+    }
+    for (const [sid, valori] of Object.entries(caso.dati.giocatori)) {
+      const x = v2.g.get(parseInt(sid, 10));
+      if (!x) { falliti += 1; peggiori.push({ nome: sid, chiave: 'assente' }); continue; }
+      CAMPI.forEach((campo, i) => {
+        confronta(x.nome, valori[i], x[campo] === undefined ? null : x[campo], campo);
+      });
+    }
+    for (const [sid, valori] of Object.entries(caso.dati.limiti)) {
+      const x = v2.g.get(parseInt(sid, 10));
+      const [lim, , , , verdetto, decMax, chiusura] = valori;
+      confronta(x.nome, lim, o2.maxBid(x)[0], 'max_bid');
+      const dec = c2.decisione(x);
+      if (dec.verdetto !== verdetto) {
+        falliti += 1;
+        peggiori.push({ nome: x.nome, chiave: 'verdetto',
+                        atteso: verdetto, avuto: dec.verdetto, scarto: 1 });
+      } else { superati += 1; }
+      confronta(x.nome, decMax, dec.max_bid, 'dec.max_bid');
+      confronta(x.nome, chiusura, dec.chiusura, 'chiusura');
+    }
+    const nuovi = falliti - prima;
+    scrivi(`  regolamento ${etichetta}: rimpiazzo P `
+         + `${v2.rimpiazzo_fm.P.toFixed(3)}, `
+         + (nuovi ? `${nuovi} numeri diversi` : 'tutto uguale'), nuovi ? 'no' : 'ok');
+  }
+
   scrivi('');
   scrivi(`${falliti ? 'CI SONO DIFFERENZE' : 'IDENTICI'}   `
        + `${superati} confronti uguali, ${falliti} diversi`,

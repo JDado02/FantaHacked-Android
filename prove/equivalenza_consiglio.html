@@ -48,7 +48,9 @@ function estrai(lista, extra) {
   return lista.map((d) => {
     const v = { id: d.id, nome: d.nome, verdetto: d.verdetto,
                 max_bid: d.max_bid, chiusura: d.chiusura,
-                utilita: d.utilita, categoria: d.categoria === undefined ? null : d.categoria };
+                utilita: d.utilita, categoria: d.categoria === undefined ? null : d.categoria,
+                titolare_pieno: d.titolare_pieno === undefined ? null : d.titolare_pieno,
+                copre: d.copre === undefined ? null : d.copre };
     for (const k of (extra || [])) v[k] = d[k] === undefined ? null : d[k];
     return v;
   });
@@ -87,6 +89,19 @@ async function main() {
     uguali('pressione', atteso.pressione, cons.pressione, dove);
     uguali('indicazione', atteso.indicazione, cons.indicazione, dove);
     uguali('budget_ruolo', atteso.budget_ruolo, cons.budget_ruolo, dove);
+    // Quanti posti della formazione copre gia' la rosa, e se quello che si
+    // vede e' il reparto in chiamata o un anticipo del prossimo: due
+    // informazioni che decidono l'ordine di tutto il resto.
+    uguali('copertura', atteso.copertura,
+           cons.copertura === undefined ? null : cons.copertura, dove);
+    uguali('anticipo', atteso.anticipo,
+           cons.anticipo === undefined ? null : cons.anticipo, dove);
+    uguali('anticipo_nome', atteso.anticipo_nome,
+           cons.anticipo_nome === undefined ? null : cons.anticipo_nome, dove);
+    uguali('restano_nel_reparto', atteso.restano_nel_reparto,
+           cons.restano_nel_reparto === undefined ? null : cons.restano_nel_reparto, dove);
+    uguali('valutati', atteso.valutati, cons.valutati, dove);
+    uguali('vuoti_testo', atteso.vuoti_testo, cons.vuoti, dove);
     uguali('top', atteso.top, estrai(cons.top), dove);
     uguali('evitare', atteso.evitare, estrai(cons.evitare), dove);
     uguali('alternative', atteso.alternative, estrai(cons.alternative), dove);

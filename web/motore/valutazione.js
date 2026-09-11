@@ -18,6 +18,7 @@
 // scioglierli in ordine diverso sposta il prezzo di tutto il reparto.
 
 import { Modificatore } from './modificatore.js';
+import { quota as formazioneQuota } from './formazione.js';
 import { arrotonda } from './comune.js';
 
 export const RUOLI = ['P', 'D', 'C', 'A'];
@@ -616,6 +617,28 @@ export class Valutatore {
     // L'id scioglie i pareggi: vedi valutazione.py.
     out.sort((a, b) => (b.vor - a.vor) || (a.id - b.id));
     return n ? out.slice(0, n) : out;
+  }
+
+  /**
+   * Quanto gioca il tappabuchi che troveresti comunque, in quel reparto.
+   *
+   * Serve come **metro di paragone** quando si chiede quante giornate in piu'
+   * copre un giocatore: il confronto giusto non e' con la casella vuota - a
+   * fine asta uno da un credito lo si trova sempre - ma con quello che
+   * prenderesti al suo posto senza spendere niente.
+   *
+   * Si guarda chi costa fino a due crediti e si prende il quarto migliore per
+   * presenze attese, non il primo: i migliori fra i riempitivi se li prende
+   * qualcun altro, e contare sul migliore in assoluto sarebbe un ottimismo
+   * che poi si paga a fine reparto.
+   */
+  quotaRiempitivo(ruolo) {
+    const quote = this.disponibili(ruolo)
+      .filter((x) => (x.prezzo_base || 1) <= 2)
+      .map((x) => formazioneQuota(x))
+      .sort((a, b) => b - a);
+    if (!quote.length) return 0.0;
+    return quote[Math.min(3, quote.length - 1)];
   }
 
   /**

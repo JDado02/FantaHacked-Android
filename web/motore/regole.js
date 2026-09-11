@@ -10,6 +10,58 @@
 export const GIORNATE = 38;
 export const RUOLI = ['P', 'D', 'C', 'A'];
 
+// I quattro valori che l'interfaccia puo' cambiare, e i loro limiti.
+// Il tetto sui crediti non e' un capriccio: l'ottimizzatore risolve uno zaino
+// con una riga per credito, quindi il costo del calcolo cresce con il budget.
+// Duemila e' gia' quattro volte la lega piu' ricca che si sia mai vista.
+export const MIN_PARTECIPANTI = 2;
+export const MAX_PARTECIPANTI = 20;
+export const MAX_CREDITI = 2000;
+
+export const CAMPI_REGOLE = ['partecipanti', 'crediti_iniziali',
+                             'modificatore_difesa', 'portieri_a_pacchetto'];
+
+/**
+ * Il regolamento del pacchetto con sopra le scelte fatte dalla schermata
+ * iniziale. Traduzione di `regole.applica`.
+ *
+ * Qui c'e' una cosa che vale la pena dire, perche' e' l'unico motivo per cui
+ * questa applicazione puo' permettersi di cambiare le regole senza rifare le
+ * proiezioni. Le proiezioni - presenze, media voto, fantamedia, punti attesi -
+ * dipendono da bonus e malus, non da **quante squadre giocano**, non da
+ * **quanti crediti** hanno, non dal modificatore (che il valutatore ricalcola
+ * ogni volta da capo) e non dai portieri a pacchetto. Quei quattro valori
+ * entrano solo nel motore di valutazione, che qui c'e' tutto. Cambiare uno
+ * degli altri campi - un gol di difensore da 4 a 3 - vorrebbe invece dire
+ * rifare le proiezioni, e quelle arrivano gia' calcolate dal pacchetto: per
+ * questo dall'interfaccia si cambiano **solo** questi quattro.
+ */
+export function applica(base, modifiche) {
+  const d = JSON.parse(JSON.stringify(base));
+  if (!modifiche) return d;
+  for (const chiave of ['partecipanti', 'crediti_iniziali']) {
+    const val = modifiche[chiave];
+    if (val !== undefined && val !== null && val !== '') {
+      const n = parseInt(val, 10);
+      if (!Number.isFinite(n)) {
+        throw new Error(chiave + ': ' + val + " non e' un numero");
+      }
+      d[chiave] = n;
+    }
+  }
+  if (modifiche.modificatore_difesa !== undefined
+      && modifiche.modificatore_difesa !== null) {
+    if (!d.modificatore_difesa) d.modificatore_difesa = {};
+    d.modificatore_difesa.attivo = !!modifiche.modificatore_difesa;
+  }
+  if (modifiche.portieri_a_pacchetto !== undefined
+      && modifiche.portieri_a_pacchetto !== null) {
+    if (!d.mercato) d.mercato = {};
+    d.mercato.portieri_a_pacchetto = !!modifiche.portieri_a_pacchetto;
+  }
+  return d;
+}
+
 export class Regole {
   constructor(d) {
     this._d = d;
@@ -108,12 +160,18 @@ export class Regole {
 
   _valida() {
     const e = [];
-    if (!(this.partecipanti >= 2 && this.partecipanti <= 20)) {
-      e.push('partecipanti fuori scala: ' + this.partecipanti);
+    if (!(this.partecipanti >= MIN_PARTECIPANTI
+          && this.partecipanti <= MAX_PARTECIPANTI)) {
+      e.push('le squadre devono essere fra ' + MIN_PARTECIPANTI + ' e '
+             + MAX_PARTECIPANTI + ', non ' + this.partecipanti);
     }
     if (this.crediti < this.slot_totali) {
       e.push('crediti (' + this.crediti + ') inferiori agli slot di rosa ('
              + this.slot_totali + '): impossibile riempire la rosa');
+    }
+    if (this.crediti > MAX_CREDITI) {
+      e.push('crediti oltre il massimo gestibile (' + MAX_CREDITI + '): il '
+             + 'calcolo del limite lavora su una riga per credito');
     }
     for (const r of RUOLI) {
       if (this.slot[r] < 1) e.push('slot ' + r + ' non valido: ' + this.slot[r]);
@@ -144,9 +202,20 @@ export class Regole {
       e.push('portieri a pacchetto ma la rosa ha meno di 2 portieri');
     }
     if (e.length) {
-      throw new Error('regole_lega.json non valido:\n  - ' + e.join('\n  - '));
+      throw new Error('regolamento non valido:\n  - ' + e.join('\n  - '));
     }
   }
+
+  /** I quattro valori che l'interfaccia mostra e lascia cambiare. */
+  impostazioni() {
+    return { partecipanti: this.partecipanti,
+             crediti_iniziali: this.crediti,
+             modificatore_difesa: this.mod_dif_attivo,
+             portieri_a_pacchetto: this.portieri_pacchetto };
+  }
+
+  /** Il dizionario grezzo, per rimetterci sopra altre scelte. */
+  grezzo() { return this._d; }
 
   bonus_modificatore(media) {
     let b = 0;
@@ -155,4 +224,6 @@ export class Regole {
   }
 }
 
-export function carica(json) { return new Regole(json); }
+export function carica(json, modifiche) {
+  return new Regole(applica(json, modifiche));
+}

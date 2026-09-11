@@ -8,12 +8,62 @@
 // frase, calcolata qui una volta.
 
 import { arrotonda } from './comune.js';
+import * as formazione from './formazione.js';
 
 export const RUOLI = ['P', 'D', 'C', 'A'];
 export const GIORNATE = 38;
 export const MARGINE_MINIMO = 0.08;
 export const CERTEZZA_RIPIEGO = 0.45;
+// Sotto questa quota di presenze attese un giocatore **non copre** un posto da
+// titolare. Puo' essere un ottimo affare, e spesso lo e' proprio perche' costa
+// poco; ma se la difesa e' fatta di quattro come lui, un giorno su tre uno di
+// loro non prende voto e la casella la riempie la panchina, o non la riempie
+// nessuno. Ventitre' giornate su trentotto e' il confine sotto cui un titolare
+// smette di essere una certezza.
+export const QUOTA_TITOLARE = 0.60;
+
+// Per chi il posto non ce l'ha ancora - ballottaggio, rotazione - la soglia e'
+// piu' alta, e non e' pignoleria. Per il conto della copertura basterebbe la
+// media: `E[min(n, disponibili)]` dipende solo dalle probabilita'. Ma qui la
+// domanda e' un'altra: **su chi posso contare per costruire la formazione**, e
+// li' l'incertezza sulla stima conta eccome. Le ventisette presenze attese di
+// un ballottaggio non sono ventisette partite quasi certe: sono la media fra
+// il vincere il posto e giocarne trentaquattro e il perderlo e giocarne dodici.
+export const QUOTA_TITOLARE_INCERTO = 0.75;
+
+// E sotto questa quota un giocatore non e' una scommessa, e' uno slot buttato.
+// Vale **sempre**, anche a reparto coperto, dove per il resto e' giusto andare
+// a caccia di affari: uno che gioca dieci partite non copre niente e non rende
+// niente, e la fantamedia alta che a volte porta e' quella di dieci partite
+// scelte bene. Non sparisce dalle liste - a volte e' l'unico che resta - ma
+// non puo' stare sopra a chi gioca.
+export const QUOTA_MINIMA_UTILE = 0.40;
+
+// Manopola di misura, non di gusto: a `false` i consigli tornano a essere
+// ordinati solo per resa, com'erano prima. Serve alle prove per giocare le
+// stesse aste nei due modi. In tutto il resto del programma resta acceso.
+export const PRIMA_I_TITOLARI = true;
+
+// Quanti giocatori del reparto si valutano davvero prima di mettere in fila i
+// consigli. Novanta, presi per valore sopra il rimpiazzo, coprono chiunque
+// possa essere un'occasione.
 export const QUANTI_VALUTATI = 90;
+
+// **Ma il valore sopra il rimpiazzo non e' il solo modo di essere utili.**
+//
+// Prendere i primi novanta per VOR sembrava innocuo - "sotto ci sono solo
+// riempitivi da un credito" - e invece taglia fuori proprio la categoria che
+// serve di piu' quando i crediti sono finiti: il **titolare fisso con
+// fantamedia normale**. Il suo VOR e' quasi zero per costruzione, perche' la
+// sua fantamedia sfiora quella del rimpiazzo; ma gioca trentuno partite e
+// costa quattro crediti. Un giocatore da rotazione con fantamedia alta ha VOR
+// piu' grande, entra fra i novanta, e finiva consigliato al posto suo.
+//
+// Successo davvero, su un'asta vera: con tre slot di difesa da riempire e nove
+// crediti in cassa, il pannello proponeva un giocatore da diciannove presenze
+// e uno da sei, mentre erano liberi a quattro crediti due titolari da trentuno.
+// Quelli non erano nemmeno stati guardati.
+export const QUANTI_TITOLARI_ECONOMICI = 24;
 export const SOGLIA_OCCASIONE = 1.0;
 export const SOGLIA_TRAPPOLA = 3.0;
 export const PREZZO_TRAPPOLA = 5;
@@ -33,6 +83,13 @@ export function nomeRuolo(r) { return NOMI_RUOLO[r]; }
 export function nomeSingolare(r) { return NOMI_SINGOLARI[r]; }
 
 function dei(n) { return n === 1 ? 'del' : 'dei'; }
+
+// `round(x, 2)` di Python: arrotondamento decimale corretto, non il giro
+// `Math.round(x * 100) / 100` che sui valori a meta' strada cade dalla parte
+// sbagliata. I numeri della copertura finiscono in una frase a schermo e in
+// una prova che li confronta con quelli del motore Python, uno per uno.
+function a2(x) { return Number(x.toFixed(2)); }
+function a3(x) { return Number(x.toFixed(3)); }
 
 export class Consigliere {
   constructor(valutatore, ottimizzatore) {
@@ -116,6 +173,80 @@ export class Consigliere {
       sicuro: !!x.sicuro, posto: x.posto_reparto, in_reparto: x.in_reparto,
       nuovo: !!x.nuovo, rigorista: Math.trunc(x.rigorista || 0), testo,
     };
+  }
+
+  // ------------------------------------------- chi copre un posto in campo
+  /**
+   * Su questo giocatore ci si puo' costruire la formazione?
+   *
+   * Le presenze attese, con una soglia piu' severa per chi il posto non ce
+   * l'ha ancora. Non si guarda `certezza`: quella misura quanto **concordano
+   * le fonti** sulla gerarchia, non quanto gioca il giocatore, e usarla come
+   * filtro buttava fuori Molina - titolare con ventinove presenze attese -
+   * solo perche' le guide non erano d'accordo fra loro.
+   */
+  static giocaSempre(x) {
+    const q = formazione.quota(x);
+    if (x && x.grado === 'titolare') return q >= QUOTA_TITOLARE;
+    return q >= QUOTA_TITOLARE_INCERTO;
+  }
+
+  /** Quanto giocano i giocatori che ho gia' in quel reparto. */
+  quoteMie(ruolo) {
+    const io = this.stato.io().id;
+    const fuori = [];
+    for (const a of this.stato.acquisti()) {
+      if (a.presidente_id !== io || a.ruolo !== ruolo) continue;
+      const x = this.v.g.get(a.giocatore_id);
+      if (x) fuori.push(formazione.quota(x));
+    }
+    return fuori;
+  }
+
+  /**
+   * Quante caselle della formazione riempie gia' il reparto che ho.
+   *
+   * E' la domanda che il programma non si faceva, e che invece decide la
+   * stagione: la rosa ha otto difensori, ma in campo ne vanno quattro ogni
+   * domenica. Se quei quattro giocano meta' campionato, la fantamedia alta
+   * che li aveva fatti sembrare un affare non la vedi mai: vedi la casella
+   * vuota, o il sesto difensore preso da un credito.
+   */
+  copertura(ruolo) {
+    const quote = this.quoteMie(ruolo);
+    const inCampo = formazione.IN_CAMPO[ruolo] || 0;
+    const r = formazione.relazione(quote, inCampo);
+    const io = this.stato.io().id;
+    const slot = this.stato.slotResidui(io, ruolo);
+    // Non si puo' chiedere di coprire piu' di quanto restino slot.
+    const mancano = Math.min(r.mancano, slot);
+    return { coperti: a2(r.coperti),
+             servono: r.servono,
+             mancano: a2(mancano),
+             mancano_interi: Math.round(mancano),
+             rischio_buco: a3(r.rischio_buco),
+             slot_residui: slot,
+             titolari: this._quantiTitolari(ruolo) };
+  }
+
+  _quantiTitolari(ruolo) {
+    const io = this.stato.io().id;
+    let n = 0;
+    for (const a of this.stato.acquisti()) {
+      if (a.presidente_id !== io || a.ruolo !== ruolo) continue;
+      const x = this.v.g.get(a.giocatore_id);
+      if (x && Consigliere.giocaSempre(x)) n += 1;
+    }
+    return n;
+  }
+
+  /** Quante caselle in piu' riempirebbe, rispetto a un tappabuchi. */
+  guadagnoCopertura(x, quote, riferimento) {
+    const q = quote === undefined ? this.quoteMie(x.ruolo) : quote;
+    const rif = riferimento === undefined
+      ? this.v.quotaRiempitivo(x.ruolo) : riferimento;
+    return formazione.guadagno(q, formazione.IN_CAMPO[x.ruolo] || 0,
+                               formazione.quota(x), rif);
   }
 
   _chiudeCoppia(x) {
@@ -257,12 +388,100 @@ export class Consigliere {
    */
   consiglio(quanti) {
     quanti = quanti || 12;
-    const ruolo = this.fase();
-    if (!ruolo) {
+    const fase = this.fase();
+    if (!fase) {
       return { fase: null, top: [], evitare: [], alternative: [], svuotare: [],
-               coppie: this._coppieAperte(), pressione: 1.0, vuoti: {},
-               indicazione: "Asta finita." };
+               coppie: this._coppieAperte(), prendere: [], ripiego: [],
+               pressione: 1.0, vuoti: {}, indicazione: "Asta finita." };
     }
+    if (this.stato.slotResidui(this.stato.io().id, fase) > 0) {
+      return this._consiglioRuolo(fase, quanti);
+    }
+    return this._repartoChiuso(fase, quanti);
+  }
+
+  /**
+   * Il mio reparto e' pieno, quello della lega no: cosa dire adesso.
+   *
+   * Succede sempre, e a lungo: coi portieri a pacchetto la mia scelta e'
+   * **una**, e poi restano sette pacchetti da assegnare agli altri, sette
+   * chiamate durante le quali non posso fare niente. Finora lo schermo
+   * rispondeva a quel momento in due modi, tutti e due sbagliati.
+   *
+   * Prima suggeriva chi "far pagare agli altri" - e sono offerte che non posso
+   * fare: con lo slot pieno il rilancio non me lo accetta nessuno, e l'intera
+   * sicurezza di quel consiglio ("se si fermano te lo aggiudichi sotto il suo
+   * valore") si regge su un acquisto che non puo' avvenire. Poi, quando
+   * restava un solo avversario in gara, spariva anche quello e la pagina
+   * restava **bianca**: proprio nel reparto piu' lungo da guardare, il
+   * programma smetteva di dire qualsiasi cosa.
+   *
+   * La risposta giusta e' che quei minuti non sono morti: sono il tempo in cui
+   * si prepara il reparto dopo. Quindi si mostra quello, dicendo chiaro che e'
+   * un anticipo e che i prezzi si assesteranno quando tocchera'.
+   */
+  _repartoChiuso(fase, quanti) {
+    const io = this.stato.io().id;
+    let prossimo = null;
+    for (const r of RUOLI) {
+      if (this.stato.slotResidui(io, r) > 0) { prossimo = r; break; }
+    }
+    const restano = this.stato.slotResiduiRuolo(fase);
+    const nomeFase = nomeRuolo(fase);
+    if (prossimo === null) {
+      const d = this._consiglioRuolo(fase, quanti);
+      d.top = []; d.evitare = []; d.alternative = []; d.svuotare = [];
+      d.prendere = []; d.ripiego = [];
+      d.indicazione = "La tua rosa e' completa: non puoi piu' fare offerte. "
+        + 'Restano ' + restano + ' ' + nomeFase + ' da assegnare agli altri, e '
+        + "quando avranno finito l'asta sara' chiusa.";
+      return d;
+    }
+    const d = this._consiglioRuolo(prossimo, quanti);
+    // Nemmeno qui si puo' offrire: durante i portieri non si chiama un
+    // difensore. La lista serve a sapere su chi andare, non a muoversi ora.
+    d.svuotare = [];
+    const vuoti = Object.assign({}, d.vuoti || {});
+    vuoti.svuotare = "Non ancora: si sta chiamando un altro reparto, e finche' "
+      + "dura non puoi ne' prendere ne' far pagare un " + nomeSingolare(prossimo)
+      + ". Quando tocchera' a loro questa sezione torna.";
+    d.vuoti = vuoti;
+    d.fase = fase;
+    d.anticipo = prossimo;
+    d.anticipo_nome = nomeRuolo(prossimo);
+    d.restano_nel_reparto = restano;
+    const coda = d.indicazione
+      ? d.indicazione[0].toLowerCase() + d.indicazione.slice(1) : '';
+    d.indicazione = 'Hai chiuso i ' + nomeFase + ": con gli slot pieni non "
+      + "puoi piu' rilanciare in questo reparto, e ne restano " + restano
+      + ' da assegnare agli altri. Intanto guarda avanti: ' + coda;
+    return d;
+  }
+
+  /**
+   * I giocatori del reparto su cui vale la pena fare i conti.
+   *
+   * I primi per valore sopra il rimpiazzo, piu' i piu' economici fra quelli
+   * che coprono un posto in formazione: le due domande sono diverse e la
+   * seconda non si risponde con la classifica della prima.
+   */
+  _daValutare(ruolo) {
+    const fuori = this.v.disponibili(ruolo, QUANTI_VALUTATI);
+    const gia = new Set(fuori.map((x) => x.id));
+    const extra = this.v.disponibili(ruolo).filter(
+      (x) => !gia.has(x.id) && Consigliere.giocaSempre(x));
+    extra.sort((a, b) => ((a.prezzo_base || 99) - (b.prezzo_base || 99))
+                      || (formazione.quota(b) - formazione.quota(a))
+                      || (a.id - b.id));
+    return fuori.concat(extra.slice(0, QUANTI_TITOLARI_ECONOMICI));
+  }
+
+  /**
+   * Le liste per **un** reparto. Di solito e' quello in chiamata; quando i
+   * miei slot li' sono pieni e' invece il prossimo che mi serve.
+   */
+  _consiglioRuolo(ruolo, quanti) {
+    quanti = quanti || 12;
     const v = this.v;
     const o = this.o;
     const stato = this.stato;
@@ -270,6 +489,10 @@ export class Consigliere {
     const serve = o.serve[ruolo] || 0;
     const pressione = this.pressione();
     const liquidita = stato.liquidita(io);
+    const possoOffrire = stato.slotResidui(io, ruolo) > 0;
+    const cop = this.copertura(ruolo);
+    const quoteMie = this.quoteMie(ruolo);
+    const riempitivo = v.quotaRiempitivo(ruolo);
 
     // Il verdetto e' quello che uscira' aprendo la scheda: le liste non
     // decidono niente per conto loro, si limitano a raggruppare. Cosi' un
@@ -277,7 +500,8 @@ export class Consigliere {
     const VALE = ["OCCASIONE", "PRENDILO", "AL PREZZO GIUSTO"];
     let top = []; let evitare = []; const neutri = []; let svuotare = [];
     let concMax = 0;
-    for (const x of v.disponibili(ruolo, QUANTI_VALUTATI)) {
+    const valutati = this._daValutare(ruolo);
+    for (const x of valutati) {
       const d = this.decisione(x);
       const conc = d.concorrenti;
       d.concorrenti = conc.length;
@@ -288,6 +512,11 @@ export class Consigliere {
       // metterebbe in cima l'affare da tre crediti e in fondo il giocatore
       // che cambia la squadra, che e' il rovescio di quel che serve sapere.
       d.punteggio = d.utilita + 0.25 * Math.max(0, margine);
+      // Copre un posto in formazione, o e' un giocatore da panchina? Finche'
+      // il nucleo non e' pieno la differenza viene prima di qualunque conto
+      // sul prezzo, e va detta su ogni riga.
+      d.titolare_pieno = Consigliere.giocaSempre(x);
+      d.copre = a3(this.guadagnoCopertura(x, quoteMie, riempitivo));
       const conv = d.convenienza;
       if (VALE.indexOf(d.verdetto) >= 0 || (conv >= SOGLIA_OCCASIONE && d.resa > 0)) {
         const soglia = Math.max(1, MARGINE_MINIMO * Math.max(1, d.chiusura));
@@ -302,13 +531,46 @@ export class Consigliere {
         d.categoria = "alternativa";
         neutri.push(d);
       }
-      if (d.categoria !== "occasione" && d.categoria !== "giusto") {
+      // Serve pero' uno slot libero in quel ruolo: senza, l'offerta non e'
+      // rischiosa, e' **impossibile** - nessuno accetta il rilancio di chi ha
+      // gia' la casella piena.
+      if (possoOffrire && d.categoria !== "occasione" && d.categoria !== "giusto") {
         const e = this._svuota(x, d, conc, liquidita);
         if (e) svuotare.push(e);
       }
     }
-    top.sort((a, b) => (b.punteggio - a.punteggio)
-                    || (b.convenienza - a.convenienza) || (a.id - b.id));
+
+    // **Prima chi gioca.** Finche' mancano titolari al nucleo, un giocatore da
+    // panchina non puo' stare sopra uno su cui si costruisce la formazione,
+    // per quanto convenga: il primo fa risparmiare crediti, il secondo fa
+    // giocare la squadra. Quando il nucleo e' coperto la distinzione sparisce
+    // da sola e si torna a ordinare per resa, che a quel punto e' la domanda
+    // giusta - i posti dal quinto in giu' sono panchina per definizione.
+    //
+    // Il criterio e' netto apposta: copre un posto fisso o no. Si era provato
+    // a graduarlo con le caselle guadagnate, ed e' un numero giusto ma
+    // inservibile per mettere in fila: in un listone pieno di titolari da un
+    // credito il guadagno **marginale** di chiunque e' un decimo di casella, e
+    // a quel punto ordinare per decimi vuol dire ordinare per rumore.
+    const chiave = (d) => {
+      const giocaPoco = ((d.presenze || 0) / GIORNATE) < QUOTA_MINIMA_UTILE;
+      const giu = PRIMA_I_TITOLARI
+        && ((cop.mancano >= 0.5 && !d.titolare_pieno) || giocaPoco);
+      // Il punteggio si arrotonda al punto intero, e **a parita' gioca chi
+      // gioca di piu'**. Non e' un dettaglio estetico: negli ultimi slot di un
+      // reparto la resa di tutti collassa fra zero e uno, e ordinare per
+      // decimi di punto vuol dire ordinare per l'errore di stima.
+      return [giu ? 1 : 0, -arrotonda(d.punteggio), -(d.presenze || 0),
+              -d.convenienza, d.id];
+    };
+    const confronta = (a, b) => {
+      const ka = chiave(a); const kb = chiave(b);
+      for (let i = 0; i < ka.length; i += 1) {
+        if (ka[i] !== kb[i]) return ka[i] < kb[i] ? -1 : 1;
+      }
+      return 0;
+    };
+    top.sort(confronta);
     svuotare.sort((a, b) => (b.punteggio - a.punteggio) || (a.id - b.id));
     evitare.sort((a, b) => ((a.convenienza - 0.15 * a.chiusura)
                           - (b.convenienza - 0.15 * b.chiusura)) || (a.id - b.id));
@@ -329,7 +591,7 @@ export class Consigliere {
     // meno" e' l'unica frase che rende utile una classifica.
     top.slice(0, quantiVeri).forEach((d, i) => {
       d.posto_fascia = i + 1;
-      if (i > 0) d.perche = Consigliere._confronto(d, top[0]);
+      if (i > 0) d.perche = Consigliere._confronto(d, top[0], cop.mancano);
     });
 
     // Fra i "gia' visti" vanno anche quelli da evitare: le alternative
@@ -337,7 +599,7 @@ export class Consigliere {
     // classificato trappola.
     const inAlto = new Set(inTop);
     for (const d of evitare) inAlto.add(d.id);
-    let alternative = this._alternative(ruolo, serve, neutri, inAlto);
+    let alternative = this._alternative(ruolo, serve, neutri, inAlto, cop);
     const inAlt = new Set(alternative.map((d) => d.id));
     svuotare = svuotare.filter((d) => !inAlt.has(d.id));
 
@@ -369,6 +631,37 @@ export class Consigliere {
       alternative = alternative.filter((d) => !promossi.has(d.id));
     }
 
+    // **E quando la fascia alta c'e' ma e' tutta panchina.**
+    //
+    // E' il caso che ha fatto scrivere tutto questo, ed e' diverso dal
+    // precedente: la lista non e' vuota, e' piena di gente che gioca poco.
+    // Succede a fine reparto, quando i crediti che restano comprano solo
+    // giocatori da pochi crediti: fra quelli, chi ha la fantamedia piu' alta
+    // e' quasi sempre un giocatore da rotazione - alta proprio perche' gioca
+    // solo le partite giuste - e finisce in cima. Ma se in formazione manca
+    // ancora un titolare, la risposta giusta non e' quella: e' il difensore da
+    // trentuno presenze che costa uguale.
+    if (cop.mancano >= 0.5 && PRIMA_I_TITOLARI && alternative.length) {
+      const testa = top.slice(0, Math.max(1, Math.floor(quanti / 3)));
+      if (!testa.some((d) => d.titolare_pieno)) {
+        const daPromuovere = alternative.filter((d) => d.titolare_pieno);
+        const quantiPro = Math.max(1, cop.mancano_interi);
+        for (const d of daPromuovere.slice(0, quantiPro)) {
+          const e = Object.assign({}, d);
+          e.categoria = 'copertura';
+          e.perche = 'Copre un posto in formazione: ' + d.presenze
+            + ' presenze attese, e a ' + Math.max(1, d.chiusura)
+            + " crediti costa quanto chi ne gioca la meta'. In questo reparto "
+            + 'ne copri ' + cop.coperti.toFixed(1) + ' su ' + cop.servono
+            + ", e finche' non sono coperte questa e' la spesa che rende di "
+            + "piu'.";
+          top.unshift(e);
+        }
+        const promossi = new Set(top.map((d) => d.id));
+        alternative = alternative.filter((d) => !promossi.has(d.id));
+      }
+    }
+
     // Chi chiude una coppia sta in un riquadro suo, in cima a tutto, e non
     // dentro le tre fasce: e' un'informazione che vale a prescindere da
     // quanto quel giocatore renda da solo, e infilarla in mezzo a una
@@ -394,14 +687,15 @@ export class Consigliere {
 
     return {
       fase: ruolo, serve, pressione: arrotonda(pressione * 100) / 100,
+      copertura: cop,
       indicazione: this._indicazione(ruolo, serve, pressione, fuori, svu,
-                                     obbligati, budgetRuolo),
+                                     obbligati, budgetRuolo, cop),
       top: fuori,
       evitare: evitare.slice(0, quantiVeri),
       alternative: alt,
       svuotare: svu,
       coppie,
-      valutati: Math.min(QUANTI_VALUTATI, v.disponibili(ruolo).length),
+      valutati: valutati.length,
       liberi_nel_ruolo: v.disponibili(ruolo).length,
       budget_ruolo: budgetRuolo,
       scarsita: this.scarsita(ruolo, serve),
@@ -410,7 +704,8 @@ export class Consigliere {
   }
 
   /** Come sta questo rispetto al migliore della fascia, in una riga. */
-  static _confronto(d, primo) {
+  static _confronto(d, primo, mancano) {
+    mancano = mancano || 0;
     const dp = arrotonda(d.resa - primo.resa);
     const dc = d.chiusura - primo.chiusura;
     const chi = primo.nome;
@@ -437,11 +732,34 @@ export class Consigliere {
       frase += " Adesso il suo limite e' zero: conviene solo dopo che " + chi
              + " e' andato a qualcun altro.";
     }
+    // E se non copre un posto in formazione va detto qui, sulla riga, non
+    // lasciato dedurre da un'etichetta grigia: e' la differenza fra un affare
+    // e un buco in difesa una domenica su tre.
+    if (mancano >= 0.5 && !d.titolare_pieno) {
+      frase += " Attenzione pero': gioca circa " + (d.presenze || 0)
+             + " giornate su 38, quindi non copre un posto fisso, e in questo"
+             + " reparto ti manca ancora chi lo copra.";
+    }
     return frase;
   }
 
-  _indicazione(ruolo, serve, pressione, prendere, svuotare, obbligati, budget) {
+  _indicazione(ruolo, serve, pressione, prendere, svuotare, obbligati, budget,
+               copertura) {
     const nome = nomeRuolo(ruolo);
+    // **Prima di ogni altra cosa: la formazione sta in piedi?** Con il nucleo
+    // scoperto la domanda non e' quale sia l'affare migliore, e' quanti
+    // titolari mancano ancora. E' l'unico caso in cui una frase sulla
+    // pressione o sui prezzi sarebbe un consiglio giusto dato nel momento
+    // sbagliato.
+    if (copertura && copertura.mancano >= 0.5 && serve > 0) {
+      const quanti = copertura.servono;
+      return 'In campo va' + (quanti === 1 ? '' : 'nno') + ' ' + quanti + ' '
+           + (quanti === 1 ? nomeSingolare(ruolo) : nome)
+           + ' ogni giornata e con la rosa di adesso ne copri '
+           + copertura.coperti.toFixed(1) + '. Prima chi gioca, poi chi '
+           + "conviene: uno da meta' campionato al posto di uno fisso non ti fa"
+           + ' risparmiare crediti, ti lascia scoperto una domenica su tre.';
+    }
     // Quando la fascia alta e' vuota la cosa da dire non e' "non conviene
     // nessuno": e' **dove sono finiti i crediti**. Senza quella frase il piano
     // sembra un'omissione invece che una scelta.
@@ -511,19 +829,40 @@ export class Consigliere {
   }
 
   /** Il piano B: chi posso prendere tutti, non uno solo svenandomi. */
-  _alternative(ruolo, serve, neutri, giaVisti) {
+  _alternative(ruolo, serve, neutri, giaVisti, copertura) {
     if (serve <= 0) return [];
     const budget = Math.max(this._budgetRuolo(ruolo), serve);
     const perSlot = budget / Math.max(1, serve);
     // Fino a una volta e mezzo la spesa media per slot: sopra, prendendolo,
     // si sbilancia il reparto e gli altri slot restano scoperti.
-    const tetto = Math.max(2.0, perSlot * 1.5);
-    const gioca = (d) => {
-      const g = d.gerarchia || {};
-      return g.grado === "titolare" && (g.certezza || 0) >= CERTEZZA_RIPIEGO;
-    };
+    let tetto = Math.max(2.0, perSlot * 1.5);
+    // Il tetto serve a non sbilanciare il reparto, ma non deve poter
+    // nascondere l'unica cosa che manca. Se in formazione restano caselle
+    // scoperte, si alza almeno fino al **titolare fisso piu' economico**
+    // disponibile: nove crediti su tre slot facevano un tetto di quattro e
+    // mezzo, e con quello un difensore da trentuno presenze a otto crediti non
+    // compariva da nessuna parte, mentre uno da diciannove a quattro stava in
+    // cima.
+    if (copertura && copertura.mancano >= 0.5) {
+      const prezzi = neutri.filter((d) => d.titolare_pieno && (d.chiusura || 0) > 0)
+        .map((d) => d.chiusura);
+      if (prezzi.length) tetto = Math.max(tetto, Math.min(...prezzi));
+    }
+    // La stessa definizione usata dalla fascia alta: un titolare qui e un
+    // titolare li' devono essere la stessa cosa, o le due liste si
+    // contraddicono sullo stesso nome.
+    const gioca = (d) => !!(PRIMA_I_TITOLARI && d.titolare_pieno);
+
+    // `resa > 0` era l'ultimo cancello, ed e' quello che teneva fuori proprio
+    // i giocatori giusti. Negli ultimi slot di un reparto la resa in punti di
+    // **chiunque** e' zero virgola qualcosa: la panchina pesa poco per
+    // costruzione. Fra due che rendono zero, pero', non sono uguali: uno gioca
+    // trentuno partite e l'altro diciannove, e finche' in formazione manca una
+    // casella quella differenza e' l'unica che conta.
+    const scoperto = !!(copertura && copertura.mancano >= 0.5);
     const out = neutri.filter(
-      (d) => !giaVisti.has(d.id) && d.chiusura <= tetto && d.resa > 0);
+      (d) => !giaVisti.has(d.id) && d.chiusura <= tetto
+             && (d.resa > 0 || (scoperto && d.titolare_pieno)));
     // Vengono prima i titolari veri: un ripiego serve quando bisogna riempire
     // uno slot in fretta, e una fantamedia alta prodotta da otto presenze in
     // quel momento fa danno.
@@ -531,10 +870,12 @@ export class Consigliere {
                     || (b.punteggio - a.punteggio) || (a.id - b.id));
     for (const d of out) {
       const g = d.gerarchia || {};
+      const coda = gioca(d) ? ''
+        : " Da panchina, pero': non contarlo fra i titolari.";
       d.perche = (g.etichetta || "Da verificare") + ", " + d.presenze
                + " presenze attese e " + d.fantamedia.toFixed(2)
                + " di fantamedia: a " + Math.max(1, d.chiusura)
-               + " crediti costa quello che vale.";
+               + " crediti costa quello che vale." + coda;
     }
 
     // Il fondo del listone non passa dalla valutazione completa: se le
@@ -546,6 +887,12 @@ export class Consigliere {
         d.categoria = "alternativa";
         d.perche = d.frase || "";
         if (d.punteggio === undefined) d.punteggio = d.utilita || 0;
+        if (d.titolare_pieno === undefined) {
+          const g = d.gerarchia || {};
+          d.titolare_pieno = g.grado === "titolare"
+            && (g.certezza || 0) >= CERTEZZA_RIPIEGO
+            && (g.quota || 0) >= QUOTA_TITOLARE;
+        }
         out.push(d);
       }
     }

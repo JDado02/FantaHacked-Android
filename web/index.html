@@ -31,19 +31,63 @@
       <span><i>Fanta</i>Hacked</span>
     </div>
     <h2>Nuova asta</h2>
-    <p class="nota">La prima squadra è la tua: tutto è calcolato dal tuo punto di vista.</p>
   </header>
   <div class="corpo">
+
+    <h3 class="titolo-sezione">Il regolamento</h3>
+    <p class="nota">Le quattro cose che cambiano da lega a lega. Toccarne una rifà
+      <b>tutti i prezzi</b>: il motore ricalcola il livello di rimpiazzo, il valore
+      e il limite di ogni giocatore. Bonus, malus e scala del modificatore
+      arrivano col pacchetto dei dati.</p>
+
+    <div id="regole" class="regole-strip">
+      <label class="regola">
+        <input id="reg-squadre" type="number" inputmode="numeric"
+               step="1" min="2" max="20" autocomplete="off">
+        <span>Squadre</span>
+      </label>
+      <label class="regola">
+        <input id="reg-crediti" type="number" inputmode="numeric"
+               step="10" min="25" max="2000" autocomplete="off">
+        <span>Crediti a testa</span>
+      </label>
+      <label class="regola leva-guscio">
+        <span class="leva">
+          <input id="reg-mod" type="checkbox">
+          <span class="leva-corpo"><span class="leva-pallino"></span></span>
+          <b id="reg-mod-testo">—</b>
+        </span>
+        <span>Modificatore difesa</span>
+      </label>
+      <label class="regola leva-guscio">
+        <span class="leva">
+          <input id="reg-pacchetto" type="checkbox">
+          <span class="leva-corpo"><span class="leva-pallino"></span></span>
+          <b id="reg-pacchetto-testo">—</b>
+        </span>
+        <span>2° e 3° portiere in automatico</span>
+      </label>
+      <div class="regola fissa"><b id="reg-rosa">—</b><span>Rosa</span></div>
+      <div class="regola fissa"><b id="reg-monte">—</b><span>Crediti in gioco</span></div>
+    </div>
+    <p id="reg-pacchetto-nota" class="nota piccola"></p>
+    <p id="reg-errore" class="avviso nascosto"></p>
+
+    <h3 class="titolo-sezione">Le squadre</h3>
+    <p class="nota">Il primo nome è il tuo: tutti i consigli sono calcolati dal tuo
+      punto di vista. I nomi sono già compilati — sovrascrivili se vuoi quelli veri.</p>
     <div id="campi-nomi" class="campi"></div>
-    <p id="nuova-regole" class="nota"></p>
+
     <button id="btn-crea" class="bottone primario grande">Comincia l'asta</button>
     <button id="btn-annulla-nuova" class="bottone piatto nascosto">Torna all'asta in corso</button>
+    <p class="nota piccola">Cominciare una nuova asta cancella quella precedente.</p>
   </div>
 </section>
 
 <!-- ============================================================== principale -->
 <section id="schermo-principale" class="schermo">
 
+  <div class="testa-fissa">
   <header id="barra" class="barra">
     <img class="barra-segno" src="marchio-piatto.svg" alt="" width="22" height="22">
     <button id="btn-menu" class="icona" aria-label="impostazioni">☰</button>
@@ -51,11 +95,35 @@
       <div class="barra-crediti"><b id="miei-crediti">—</b><span>crediti</span></div>
       <div class="barra-slot"><b id="miei-slot">—</b><span>slot</span></div>
     </div>
-    <div id="barra-fase" class="pillola">—</div>
   </header>
+
+  <!-- La riga che dice a che punto è l'asta. Prima il reparto e quante caselle
+       restano stavano sulla stessa riga senza allinearsi: adesso sono due
+       colonne, etichetta sopra e valore sotto, così la cifra sta dove ci si
+       aspetta anche quando il nome del reparto è lungo. -->
+  <div id="striscia" class="striscia">
+    <div class="striscia-voce">
+      <span class="etichetta">Si chiamano</span>
+      <b id="fase-nome">—</b>
+      <span id="fase-residui" class="fase-residui"></span>
+    </div>
+    <div class="striscia-voce turno">
+      <span class="etichetta">Turno di chiamata</span>
+      <button id="btn-turno" class="turno-nome">—</button>
+      <button id="btn-avanza" class="mini" title="passa al successivo">successivo ›</button>
+    </div>
+    <!-- Attrezzo da collaudo, non da asta: riempie il reparto in corso per
+         tutti, così si arriva in un secondo al punto che si vuole guardare.
+         Chiede conferma perché un tocco di troppo, la sera giusta,
+         costerebbe la serata. -->
+    <button id="btn-completa" class="mini prova">completa reparto</button>
+  </div>
+  </div>
 
   <!-- ---------------------------------------------------------- pannelli -->
   <div id="pannello-chiama" class="pannello attivo">
+    <div id="anticipo" class="anticipo nascosto"></div>
+    <div id="copertura" class="copertura nascosto"></div>
     <p id="indicazione" class="indicazione"></p>
     <div id="coppie" class="riquadro-coppie nascosto"></div>
     <div id="scarsita" class="avviso nascosto"></div>
@@ -91,19 +159,58 @@
       <button class="filtro" data-ruolo="C">C</button>
       <button class="filtro" data-ruolo="A">A</button>
     </div>
+    <!-- Il listone del programma per computer, con gli stessi ordinamenti: la
+         colonna che si vede a destra è quella per cui la lista è ordinata,
+         altrimenti si legge una classifica che non segue i numeri sotto gli
+         occhi. -->
+    <div id="ordini" class="filtri secondari">
+      <button class="ordine attivo" data-ordine="costa">costa</button>
+      <button class="ordine" data-ordine="valore">vale</button>
+      <button class="ordine" data-ordine="presenze">presenze</button>
+      <button class="ordine" data-ordine="mv">media voto</button>
+      <button class="ordine" data-ordine="quota">quotazione</button>
+      <button class="ordine" data-ordine="nome">nome</button>
+    </div>
+    <label class="spunta">
+      <input id="solo-titolari" type="checkbox">
+      <span>solo titolari sicuri</span>
+    </label>
+    <p id="conta-listone" class="nota piccola"></p>
     <div id="risultati" class="lista"></div>
   </div>
 
   <div id="pannello-rosa" class="pannello">
     <div id="riepilogo-rosa"></div>
+
+    <div class="sezione">
+      <h3>Quante caselle copri</h3>
+      <div id="copertura-rosa"></div>
+    </div>
+
     <div class="sezione">
       <h3>La mia rosa</h3>
       <div id="mia-rosa"></div>
     </div>
+
     <div class="sezione">
-      <h3>Gli altri</h3>
+      <h3>L'undici che riesci a schierare</h3>
+      <div id="undici"></div>
+    </div>
+
+    <div class="sezione">
+      <h3>Il piano di spesa</h3>
+      <div id="piano"></div>
+    </div>
+
+    <div class="sezione">
+      <h3>Gli altri
+        <button id="btn-rinomina" class="mini">rinomina</button>
+      </h3>
+      <p class="nota piccola">Tocca una squadra per vedere la sua rosa, o per
+        darle il turno di chiamata.</p>
       <div id="altri-presidenti" class="tabellina"></div>
     </div>
+
     <div class="sezione">
       <h3>Ultimi acquisti</h3>
       <div id="ultimi" class="lista compatta"></div>
@@ -114,7 +221,7 @@
   <!-- ------------------------------------------------------------ navigazione -->
   <nav id="navigazione">
     <button class="voce attiva" data-pannello="chiama"><span>◎</span>Chiama</button>
-    <button class="voce" data-pannello="cerca"><span>⌕</span>Cerca</button>
+    <button class="voce" data-pannello="cerca"><span>⌕</span>Listone</button>
     <button class="voce" data-pannello="rosa"><span>▦</span>Rosa</button>
   </nav>
 </section>
@@ -144,6 +251,43 @@
   </div>
 </div>
 
+<!-- ========================================================== rosa avversario -->
+<div id="avversario" class="foglio" hidden>
+  <div class="foglio-fondo"></div>
+  <div class="foglio-corpo" role="dialog" aria-modal="true" aria-label="rosa della squadra">
+    <button id="btn-chiudi-avversario" class="icona chiudi" aria-label="chiudi">✕</button>
+    <div id="avversario-contenuto"></div>
+  </div>
+</div>
+
+<!-- ================================================================= rinomina -->
+<div id="rinomina" class="foglio" hidden>
+  <div class="foglio-fondo"></div>
+  <div class="foglio-corpo" role="dialog" aria-modal="true" aria-label="rinomina le squadre">
+    <button id="btn-chiudi-rinomina" class="icona chiudi" aria-label="chiudi">✕</button>
+    <h3>Rinomina le squadre</h3>
+    <p class="nota">Cambia solo i nomi: rose, crediti e acquisti restano dove sono.</p>
+    <div id="campi-rinomina" class="campi"></div>
+    <button id="btn-salva-nomi" class="bottone primario grande">Salva i nomi</button>
+  </div>
+</div>
+
+<!-- ================================================================= conferma
+     Una domanda con due risposte, con gli stessi fogli del resto
+     dell'applicazione: dentro una WebView `window.confirm()` non apre niente e
+     risponde «no» per conto suo. -->
+<div id="conferma" class="foglio" hidden>
+  <div class="foglio-fondo"></div>
+  <div class="foglio-corpo" role="dialog" aria-modal="true" aria-label="conferma">
+    <h3 id="conferma-titolo">Sicuro?</h3>
+    <p id="conferma-testo" class="frase"></p>
+    <div class="azioni">
+      <button id="conferma-si" class="bottone primario">Vai</button>
+      <button id="conferma-no" class="bottone secondario">Lascia stare</button>
+    </div>
+  </div>
+</div>
+
 <!-- ================================================================ impostazioni -->
 <div id="menu" class="foglio" hidden>
   <div class="foglio-fondo"></div>
@@ -151,6 +295,9 @@
     <button id="btn-chiudi-menu" class="icona chiudi" aria-label="chiudi">✕</button>
     <h3>Impostazioni</h3>
     <div id="info-dati" class="tabellina"></div>
+    <p class="nota">Il regolamento di <b>questa</b> asta non si cambia a metà
+      serata: si gioca fino in fondo con quello con cui è cominciata. Per
+      cambiarlo serve una nuova asta.</p>
     <button id="btn-aggiorna-dati" class="bottone secondario">Cerca dati più recenti</button>
     <button id="btn-nuova-asta" class="bottone secondario">Nuova asta</button>
     <p class="nota">L'asta resta su questo telefono. I dati dei giocatori si

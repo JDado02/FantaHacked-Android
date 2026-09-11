@@ -12,8 +12,12 @@ android {
         // da non capire i moduli JavaScript, che e' come e' scritto il motore.
         minSdk 24
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        // Seconda versione: il regolamento si sceglie dall'applicazione, il
+        // motore mette davanti chi scende in campo, e c'e' tutto quello che
+        // fa il programma per computer - listone, rose degli avversari,
+        // undici, piano di spesa, rinomina, turno di chiamata.
+        versionCode 2
+        versionName "1.1"
     }
 
     sourceSets {

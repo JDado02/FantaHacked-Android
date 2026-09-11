@@ -105,8 +105,11 @@ input:focus-visible, button:focus-visible {
 }
 
 /* -------------------------------------------------------------- barra */
+/* Barra e striscia sono un blocco solo, e il blocco sta in alto: due elementi
+   appiccicati uno sotto l'altro vorrebbero sapere ognuno l'altezza dell'altro,
+   e il giorno che una cifra va a capo si sovrappongono. */
+.testa-fissa { position: sticky; top: 0; z-index: 20; }
 .barra {
-  position: sticky; top: 0; z-index: 20;
   display: flex; align-items: center; gap: 10px;
   padding: calc(8px + var(--sicuro-alto)) 10px 8px;
   background: color-mix(in srgb, var(--fondo) 92%, transparent);
@@ -328,3 +331,213 @@ input:focus-visible, button:focus-visible {
   max-width: 88vw; text-align: center;
 }
 .brindisi[hidden] { display: none; }
+
+/* ====================================================== il regolamento
+   I quattro valori che cambiano da lega a lega, sulla schermata iniziale.
+   Due caselle da scrivere e due leve: toccarne una rifa' tutti i prezzi, e
+   sotto compaiono subito rosa e monte crediti, cosi' il numero che si e'
+   appena scelto si vede tradotto in qualcosa di leggibile. */
+.titolo-sezione {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .09em;
+  color: var(--testo-fioco); margin: 20px 0 6px; font-weight: 700;
+}
+.regole-strip {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 8px;
+}
+.regola {
+  background: var(--pannello); border: 1px solid var(--linea);
+  border-radius: var(--raggio); padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 3px; min-width: 0;
+}
+.regola > span {
+  font-size: 11px; color: var(--testo-fioco);
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.regola input[type="number"] {
+  background: none; border: none; color: var(--accento); font: inherit;
+  font-size: 24px; font-weight: 700; padding: 0; width: 100%;
+  font-variant-numeric: tabular-nums; -moz-appearance: textfield;
+}
+.regola input[type="number"]:focus { outline: none; }
+.regola.fissa b { font-size: 18px; font-weight: 700; }
+.regola.leva-guscio { justify-content: space-between; }
+
+/* La leva: un bersaglio grande abbastanza per un pollice, con la parola
+   accanto. Un interruttore senza etichetta si legge male al buio di una
+   stanza d'asta. */
+.leva { display: flex; align-items: center; gap: 9px; cursor: pointer; }
+.leva input { position: absolute; opacity: 0; width: 0; height: 0; }
+.leva-corpo {
+  width: 42px; height: 25px; border-radius: 999px; flex: none;
+  background: var(--pannello-alt); border: 1px solid var(--linea);
+  position: relative; transition: background .13s;
+}
+.leva-pallino {
+  position: absolute; top: 2px; left: 2px; width: 19px; height: 19px;
+  border-radius: 50%; background: var(--testo-fioco); transition: transform .13s;
+}
+.leva input:checked + .leva-corpo { background: var(--accento); border-color: transparent; }
+.leva input:checked + .leva-corpo .leva-pallino {
+  transform: translateX(17px); background: #1b1405;
+}
+.leva b { font-size: 15px; font-weight: 700; }
+.nota.piccola { font-size: 12px; }
+.avviso.piccolo { font-size: 12.5px; margin-top: 8px; }
+
+/* ============================================ la striscia dello stato
+   Prima il reparto e quante caselle restano stavano sulla stessa riga e non
+   si allineavano: adesso ogni voce e' una colonna con l'etichetta sopra e il
+   valore sotto, cosi' la cifra sta dove ci si aspetta anche quando il nome
+   del reparto e' lungo. */
+.striscia {
+  display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap;
+  padding: 9px 14px 10px; background: var(--fondo-alto);
+  border-bottom: 1px solid var(--linea);
+}
+.striscia-voce { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.striscia-voce .etichetta {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--testo-fioco);
+}
+.striscia-voce b { font-size: 14px; letter-spacing: .04em; }
+.fase-residui { font-size: 11.5px; color: var(--testo-tenue); }
+.striscia-voce.turno { flex-direction: column; }
+.turno-nome {
+  background: none; border: none; padding: 0; color: var(--accento);
+  font: inherit; font-size: 14px; font-weight: 700; text-align: left;
+  cursor: pointer;
+}
+.mini {
+  background: var(--pannello); border: 1px solid var(--linea);
+  color: var(--testo-tenue); border-radius: 999px; padding: 4px 11px;
+  font: inherit; font-size: 11.5px; cursor: pointer; margin-top: 3px;
+  align-self: flex-start;
+}
+.mini:disabled { opacity: .4; }
+.sezione h3 .mini { margin: 0 0 0 8px; vertical-align: middle; }
+/* Il tasto da collaudo si veste da attrezzo, non da bottone: tratteggiato e
+   scolorito, perche' non deve somigliare a qualcosa da premere per sbaglio la
+   sera dell'asta. */
+.mini.prova {
+  border-style: dashed; color: var(--testo-fioco); background: none;
+  margin-left: auto;
+}
+
+/* ========================================================= la copertura
+   La rosa ha otto difensori, ma in campo ne vanno quattro ogni domenica.
+   Questo e' quante di quelle caselle si riempiono davvero, ed e' il numero
+   che decide l'ordine di tutta la lista sotto. */
+.copertura {
+  background: var(--pannello); border: 1px solid var(--linea);
+  border-radius: var(--raggio); padding: 10px 12px 11px; margin-bottom: 12px;
+}
+.cop-testa { display: flex; justify-content: space-between; align-items: baseline;
+             gap: 10px; font-size: 12.5px; color: var(--testo-tenue); }
+.cop-testa b { font-size: 19px; color: var(--testo);
+               font-variant-numeric: tabular-nums; }
+.cop-testa b span { font-size: 13px; color: var(--testo-fioco); font-weight: 500; }
+.cop-barra {
+  height: 7px; border-radius: 999px; background: var(--pannello-alt);
+  margin: 7px 0 6px; overflow: hidden;
+}
+.cop-barra i { display: block; height: 100%; border-radius: 999px;
+               background: var(--ottimo); }
+.cop-barra.scoperta i { background: var(--medio); }
+.cop-sotto { font-size: 12.5px; color: var(--testo-fioco); line-height: 1.45; }
+
+/* L'anticipo: quello che si vede non e' il reparto in chiamata ma il
+   prossimo. Senza dirlo si legge una lista di difensori mentre si stanno
+   chiamando i portieri, e sembra un difetto. */
+.anticipo {
+  background: color-mix(in srgb, var(--accento) 12%, var(--pannello));
+  border: 1px solid color-mix(in srgb, var(--accento) 38%, transparent);
+  border-radius: var(--raggio); padding: 10px 12px; margin-bottom: 12px;
+  font-size: 13px; line-height: 1.5;
+}
+.anticipo b { color: var(--accento); text-transform: uppercase;
+              font-size: 11px; letter-spacing: .08em; margin-right: 6px; }
+
+/* Due etichette, e sono la stessa domanda vista dai due lati: su questo ci
+   costruisco la formazione, o e' uno da panchina? */
+.marchietto.copre { background: color-mix(in srgb, var(--ottimo) 20%, transparent);
+                    color: var(--ottimo); }
+.marchietto.panchina { background: var(--pannello-alt); color: var(--testo-fioco); }
+.riga.promossa { border-left-color: var(--ottimo);
+                 background: color-mix(in srgb, var(--ottimo) 7%, var(--pannello)); }
+.riga.venduta { opacity: .55; }
+
+/* ============================================================ il listone */
+.filtri.secondari { flex-wrap: wrap; margin-bottom: 8px; }
+.ordine {
+  background: var(--pannello); border: 1px solid var(--linea);
+  color: var(--testo-fioco); border-radius: 999px; padding: 5px 11px;
+  font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.ordine.attivo { background: var(--pannello-alt); color: var(--testo);
+                 border-color: var(--testo-fioco); }
+.spunta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+          color: var(--testo-fioco); font-size: 13px; }
+.spunta input { width: 17px; height: 17px; accent-color: var(--accento); }
+
+/* ====================================================== rosa e squadre */
+.tabellina .r.cliccabile {
+  border: none; font: inherit; color: inherit; text-align: left; width: 100%;
+  cursor: pointer;
+}
+.tabellina .r.cliccabile:active { background: var(--pannello-alt); }
+.tabellina .r.turno { box-shadow: inset 2px 0 0 var(--accento); }
+.tabellina .r b.ok { color: var(--ottimo); }
+.tabellina .r b.manca { color: var(--medio); }
+.tabellina .r .sopra { color: var(--stop); font-size: 11px; font-weight: 500; }
+
+/* L'undici: non un campo disegnato, che su un telefono non ci sta, ma quattro
+   file di maglie. Quelle vuote sono le caselle che oggi non riusciresti a
+   riempire, ed e' la cosa piu' importante da vedere. */
+.undici-testa { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.undici-testa b { font-size: 22px; letter-spacing: .04em; color: var(--accento); }
+.undici-testa span { font-size: 12.5px; color: var(--testo-fioco); }
+.undici { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.reparto-campo { display: flex; gap: 6px; flex-wrap: wrap; }
+.maglia {
+  background: var(--pannello); border: 1px solid var(--linea);
+  border-radius: 9px; padding: 6px 9px; font-size: 12.5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 46vw;
+}
+.maglia.sicuro { border-color: color-mix(in srgb, var(--ottimo) 45%, transparent); }
+.maglia.vuota { border-style: dashed; color: var(--testo-fioco); }
+.blocchetto.quieto { opacity: .78; }
+
+/* I nomi che il piano comprerebbe con i crediti di quel reparto. */
+.obiettivi { display: flex; flex-wrap: wrap; gap: 6px; }
+.obiettivo {
+  background: var(--pannello); border: 1px solid var(--linea);
+  border-radius: 9px; padding: 5px 9px; font-size: 12.5px;
+  display: inline-flex; align-items: baseline; gap: 6px;
+}
+.obiettivo b { color: var(--accento); font-variant-numeric: tabular-nums; }
+
+/* La conferma sta sopra il brindisi: sugli altri fogli il brindisi serve (e'
+   li' che compaiono gli errori di registrazione), ma davanti a una domanda
+   copre proprio le due risposte. */
+#conferma { z-index: 70; }
+
+/* Il bilancio: chi sta facendo affari e chi sta pagando caro. Il colore e' un
+   verdetto, non una decorazione, ed e' lo stesso dei verdetti sui giocatori. */
+.bilancio {
+  border: 1px solid var(--linea); border-left-width: 3px;
+  border-radius: var(--raggio); background: var(--pannello);
+  padding: 10px 12px; margin-top: 10px;
+}
+.bilancio.positivo { border-left-color: var(--ottimo); }
+.bilancio.negativo { border-left-color: var(--stop); }
+.bilancio.pari, .bilancio.niente { border-left-color: var(--linea); }
+.bilancio-cifre { display: flex; align-items: baseline; gap: 6px;
+                  flex-wrap: wrap; margin-bottom: 6px; }
+.bilancio-cifre b { font-size: 19px; font-variant-numeric: tabular-nums; }
+.bilancio-cifre span { font-size: 11px; color: var(--testo-fioco);
+                       text-transform: uppercase; letter-spacing: .05em;
+                       margin-right: 8px; }
+.bilancio p { margin: 0; font-size: 13px; line-height: 1.5;
+              color: var(--testo-tenue); }
+.tabellina .r b.verso-positivo { color: var(--ottimo); }
+.tabellina .r b.verso-negativo { color: var(--stop); }

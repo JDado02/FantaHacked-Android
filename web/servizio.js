@@ -10,7 +10,7 @@
 // l'apk - ma non da' fastidio, ed e' quello che rende la stessa cartella
 // installabile anche dal browser.
 
-const VERSIONE = 'fantahacked-2';
+const VERSIONE = 'fantahacked-3';
 const MIEI = [
   './',
   './index.html',
@@ -25,11 +25,13 @@ const MIEI = [
   './motore/comune.js',
   './motore/regole.js',
   './motore/modificatore.js',
+  './motore/formazione.js',
   './motore/asta.js',
   './motore/dati.js',
   './motore/valutazione.js',
   './motore/ottimizzatore.js',
   './motore/strategia.js',
+  './motore/equilibrio.js',
 ];
 
 self.addEventListener('install', (e) => {

@@ -14,6 +14,7 @@
 // quel controllo sposterebbe tutta l'asta da li' in poi.
 
 import { Casuale } from './casuale.js';
+import * as formazione from '../web/motore/formazione.js';
 
 export const RUOLI = ['P', 'D', 'C', 'A'];
 export const NOMI = ['Davide', 'Jacopo', 'Windser', 'Luca',
@@ -103,6 +104,32 @@ function undiciAtteso(rosa) {
     tot += migliori.reduce((s, d) => s + (d.punti || 0), 0);
   }
   return tot;
+}
+
+/**
+ * Lo stesso punteggio, ma contando solo quello che si riesce a schierare.
+ *
+ * `punteggio` somma i punti dei migliori per reparto: dice quanto vale la rosa
+ * **se giocassero tutti sempre**. Ha un buco preciso: un difensore da diciotto
+ * presenze e fantamedia alta ci entra come uno da trentadue, perche' presenze
+ * per fantamedia e' lo stesso numero. Nelle venti giornate in cui il primo non
+ * c'e', pero', quella casella o la riempie il quinto difensore o resta vuota.
+ */
+function punteggioSchierato(rosa, reg, mod) {
+  const totale = formazione.puntiStagione(rosa);
+  if (!mod.attivo) return totale;
+  return totale + bonusDifesa(rosa, reg, mod);
+}
+
+function bonusDifesa(rosa, reg, mod) {
+  const nPor = reg.mod_dif_n_por;
+  const nDif = reg.mod_dif_n_dif;
+  const por = rosa.P.slice().sort((a, b) => (b.mv || 0) - (a.mv || 0)).slice(0, nPor);
+  const dif = rosa.D.slice().sort((a, b) => (b.mv || 0) - (a.mv || 0)).slice(0, nDif);
+  const scelti = por.concat(dif);
+  if (scelti.length < nPor + nDif) return 0;
+  const media = scelti.reduce((s, d) => s + (d.mv || 0), 0) / scelti.length;
+  return mod.puntiStagione(media);
 }
 
 function punteggio(rosa, reg, mod) {
@@ -232,9 +259,16 @@ export function giocaAsta(seme, ctx) {
       const g = v.g.get(a.giocatore_id);
       rosa[a.ruolo].push({
         nome: a.nome, squadra: a.squadra, prezzo: a.prezzo,
-        presenze: g ? Math.round(g.presenze) : 0,
+        // Arrotondati **come Python**, non come JavaScript: a meta' strada
+        // Python va al pari piu' vicino. Su un giocatore da 30,5 presenze
+        // attese - e ce ne sono - la differenza fra 30 e 31 sposta il
+        // punteggio schierato di un punto pieno.
+        presenze: g ? arrotondaPython(g.presenze) : 0,
         punti: g ? arrotondaPython(g.presenze * g.fm) : 0,
-        mv: g ? Math.round(g.mv * 1000) / 1000 : 0.0,
+        // La fantamedia serve al punteggio "schierato", che conta i punti
+        // giornata per giornata invece di sommare quelli dei migliori.
+        fm: g ? arrotondaPython(g.fm * 1000) / 1000 : 0.0,
+        mv: g ? arrotondaPython(g.mv * 1000) / 1000 : 0.0,
       });
     }
     rose[nome] = rosa;
@@ -242,9 +276,11 @@ export function giocaAsta(seme, ctx) {
 
   const punti = {};
   const senzaMod = {};
+  const schierati = {};
   for (const n of NOMI) {
     punti[n] = punteggio(rose[n], reg, mod);
     senzaMod[n] = undiciAtteso(rose[n]);
+    schierati[n] = punteggioSchierato(rose[n], reg, mod);
   }
   const mia = rose[NOMI[0]];
   const spesa = {};
@@ -256,6 +292,7 @@ export function giocaAsta(seme, ctx) {
   return {
     seme,
     punti,
+    schierati,
     senza_modificatore: senzaMod,
     spesa,
     slot,

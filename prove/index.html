@@ -25,7 +25,10 @@ deve</b>: quello che non deve poter succedere durante una serata.</p>
   <span>Crediti che tornano dopo un annullo, un'asta che si ritrova al
   riavvio, un giocatore che non si compra due volte, chi non è in lista che
   resta a zero anche quando manca un solo posto e i crediti sono finiti, i
-  portieri a pacchetto, e i tempi di risposta.</span>
+  portieri a pacchetto, il regolamento che cambia davvero i prezzi e viaggia
+  con l'asta, la copertura della formazione, il reparto chiuso che non lascia
+  la pagina bianca, la rinomina, l'undici schierabile, e i tempi di
+  risposta.</span>
 </a>
 
 <p>Le altre due sono un'altra cosa. Il motore di questa applicazione è una traduzione di quello Python del
@@ -37,8 +40,9 @@ uno per uno.</p>
 <a href="equivalenza.html">
   <b>I numeri</b>
   <span>Prezzi, VOR, contributo al modificatore, coefficienti della curva,
-  ottimo dello zaino, limiti e verdetti — su 593 giocatori e quattro momenti
-  diversi dell'asta.</span>
+  ottimo dello zaino, limiti, verdetti e il quadro della rosa — su 593
+  giocatori, sei momenti dell'asta e quattro regolamenti diversi, da sei a
+  venti squadre.</span>
 </a>
 
 <a href="equivalenza_consiglio.html">
@@ -49,9 +53,9 @@ uno per uno.</p>
   sbagliato.</span>
 </a>
 
-<a href="aste.html">
-  <b>Duecento aste intere</b>
-  <span>Le stesse duecento aste che gioca il programma per computer, con lo
+<a href="aste.html?n=500">
+  <b>Cinquecento aste intere</b>
+  <span>Le stesse cinquecento aste che gioca il programma per computer, con lo
   stesso caso e gli stessi avversari, giocate qui. Non «risultati simili»:
   la stessa partita, e le rose devono venire identiche una per una.</span>
 </a>
@@ -66,5 +70,5 @@ uno per uno.</p>
 <p>Per rigenerare i file attesi, dal progetto del computer:</p>
 <p><code>python simulazioni/dump_equivalenza.py &lt;qui&gt;/prove/attesi.json</code><br>
 <code>python simulazioni/dump_consiglio.py &lt;qui&gt;/prove/attesi_consiglio.json</code><br>
-<code>python simulazioni/cento_aste.py 200</code> &rarr; copia
+<code>python simulazioni/cento_aste.py 500</code> &rarr; copia
 <code>simulazioni/cento_aste_mercato.json</code> in <code>prove/attesi_aste.json</code></p>

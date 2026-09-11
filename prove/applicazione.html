@@ -24,6 +24,8 @@ const { StatoAsta, DepositoLocale, ErroreAsta } = await import('../web/motore/as
 const { Valutatore } = await import('../web/motore/valutazione.js' + q);
 const { Ottimizzatore } = await import('../web/motore/ottimizzatore.js' + q);
 const { Consigliere } = await import('../web/motore/strategia.js' + q);
+const { Equilibrio } = await import('../web/motore/equilibrio.js' + q);
+const { arrotonda } = await import('../web/motore/comune.js' + q);
 
 const out = document.getElementById('esito');
 const righe = [];
@@ -193,6 +195,290 @@ async function main() {
   verifica('un limite sta sotto i cento millisecondi', (t4 - t3) < 100);
   verifica('e il consiglio ha davvero qualcosa da dire',
            !!cons.indicazione && (cons.top.length + cons.alternative.length) > 0);
+
+
+  titolo('[8] Il regolamento scelto cambia davvero i prezzi');
+  // E' la domanda dell'utente: «i prezzi e la strategia cambiano se cambio il
+  // numero di persone?». Devono, e in una direzione precisa. Il livello di
+  // rimpiazzo e' la fantamedia del giocatore che resta a chi arriva ultimo:
+  // con venti squadre la lega assorbe piu' giocatori, quindi quel livello
+  // scende, e chi sta in cima vale **di piu'** rispetto a lui. Il limite
+  // massimo pero' scende lo stesso, perche' i crediti in tasca sono sempre
+  // quelli e comprano una fetta piu' piccola di un mercato piu' affollato.
+  function conRegole(modifiche) {
+    const r = caricaRegole(regoleJson, modifiche);
+    const s = new StatoAsta(r, null);
+    s.collega(perId);
+    s.inizializza(NOMI.slice(1, r.partecipanti), NOMI[0]);
+    const vv = new Valutatore(dati, r, s);
+    return { reg: r, stato: s, v: vv, o: new Ottimizzatore(vv) };
+  }
+  const pochi = conRegole({ partecipanti: 6 });
+  const tanti = conRegole({ partecipanti: 20 });
+  verifica('con piu\' squadre il livello di rimpiazzo scende',
+           tanti.v.rimpiazzo_fm.P < pochi.v.rimpiazzo_fm.P,
+           pochi.v.rimpiazzo_fm.P.toFixed(3) + ' con 6, '
+           + tanti.v.rimpiazzo_fm.P.toFixed(3) + ' con 20');
+  const nomeTop = pochi.v.disponibili('P')[0].nome;
+  const vorPochi = pochi.v.g.get(pochi.v.disponibili('P')[0].id).vor;
+  const xTanti = [...tanti.v.g.values()].find((x) => x.nome === nomeTop);
+  verifica('e chi sta in cima vale di piu\' sopra il rimpiazzo',
+           xTanti.vor > vorPochi,
+           nomeTop + ': ' + vorPochi.toFixed(1) + ' con 6, '
+           + xTanti.vor.toFixed(1) + ' con 20');
+  // E sale anche il limite, che e' la stessa cosa detta in crediti: `maxBid`
+  // non e' un prezzo, e' quanto quel giocatore vale **per la mia rosa**, e in
+  // una lega grande l'alternativa che avrei al suo posto e' molto peggiore.
+  verifica('e quindi sale anche il tuo limite su di lui',
+           tanti.o.maxBid(xTanti)[0] > pochi.o.maxBid(pochi.v.disponibili('P')[0])[0],
+           pochi.o.maxBid(pochi.v.disponibili('P')[0])[0] + ' con 6, '
+           + tanti.o.maxBid(xTanti)[0] + ' con 20');
+  const ricchi = conRegole({ crediti_iniziali: 1000 });
+  const poveri = conRegole({ crediti_iniziali: 250 });
+  const nomeA = poveri.v.disponibili('A')[0].nome;
+  const aRicchi = [...ricchi.v.g.values()].find((x) => x.nome === nomeA);
+  const aPoveri = [...poveri.v.g.values()].find((x) => x.nome === nomeA);
+  verifica('col doppio dei crediti tutto costa circa il doppio',
+           aRicchi.prezzo_mercato > 3 * aPoveri.prezzo_mercato,
+           nomeA + ': ' + Math.round(aPoveri.prezzo_mercato) + ' a 250 crediti, '
+           + Math.round(aRicchi.prezzo_mercato) + ' a 1000');
+  const senzaMod = conRegole({ modificatore_difesa: false });
+  const conMod = conRegole({ modificatore_difesa: true });
+  const difOk = conMod.v.disponibili('D')[0];
+  verifica('col modificatore acceso i difensori valgono di piu\'',
+           difOk.punti_mod > 0
+           && [...senzaMod.v.g.values()].find((x) => x.id === difOk.id).punti_mod === 0,
+           difOk.nome + ': +' + difOk.punti_mod.toFixed(1) + ' punti di modificatore');
+  const senzaPacco = conRegole({ portieri_a_pacchetto: false });
+  verifica('coi portieri uno per uno il pacchetto si spegne',
+           senzaPacco.v.pacchetto === false
+           && senzaPacco.o.maxBid(senzaPacco.v.disponibili('P')[1])[0] > 0,
+           'il secondo portiere ha un limite suo');
+
+  titolo('[9] Il regolamento viaggia con l\'asta');
+  // Un'asta si gioca fino in fondo con le regole con cui e' cominciata.
+  // Cambiare i crediti a meta' serata e vedersi ricalcolare all'indietro i
+  // limiti gia' spesi non sarebbe una comodita', sarebbe un modo di perderla.
+  const depR = new DepositoLocale(chiave + '.regole');
+  const regSei = caricaRegole(regoleJson, { partecipanti: 6, crediti_iniziali: 333 });
+  const stR = new StatoAsta(regSei, depR);
+  stR.collega(perId);
+  stR.inizializza(NOMI.slice(1, 6), NOMI[0]);
+  verifica('le regole sono scritte dentro l\'asta', !!stR.regoleSalvate());
+  const riletto = caricaRegole(stR.regoleSalvate(), null);
+  verifica('e rileggendole si ritrovano identiche',
+           riletto.partecipanti === 6 && riletto.crediti === 333,
+           riletto.partecipanti + ' squadre, ' + riletto.crediti + ' crediti');
+  verifica('i presidenti sono davvero sei', stR.presidenti().length === 6);
+  depR.cancella();
+
+  titolo('[10] Prima chi gioca, poi chi conviene');
+  // La rosa ha otto difensori, ma in campo ne vanno quattro ogni domenica.
+  st = apri();
+  st.inizializza(NOMI.slice(1), NOMI[0]);
+  v = new Valutatore(dati, reg, st); o = new Ottimizzatore(v); c = new Consigliere(v, o);
+  const copVuota = c.copertura('D');
+  verifica('a difesa vuota non copri niente',
+           copVuota.coperti === 0 && copVuota.mancano === 4 && copVuota.servono === 4,
+           JSON.stringify(copVuota));
+  // Quattro titolari veri: la copertura deve arrivare quasi a quattro.
+  const titolari = v.disponibili('D').filter((x) => Consigliere.giocaSempre(x)).slice(0, 4);
+  verifica('di titolari fissi ce n\'e\' abbastanza', titolari.length === 4);
+  for (const x of titolari) st.registra(x.id, 1, 1, null);
+  v = new Valutatore(dati, reg, st); o = new Ottimizzatore(v); c = new Consigliere(v, o);
+  const copPiena = c.copertura('D');
+  // Nemmeno quattro titolari veri coprono quattro caselle, ed e' il punto di
+  // tutto il conto: quattro giocatori da trenta presenze riempiono poco piu'
+  // di tre caselle su quattro, perche' dietro non c'e' nessuno. Per arrivare
+  // a quattro serve il quinto.
+  verifica('quattro titolari coprono piu\' di tre caselle su quattro',
+           copPiena.coperti > 3.0 && copPiena.coperti < 4.0,
+           copPiena.coperti + ' su 4');
+  verifica('e il programma li conta come titolari fissi', copPiena.titolari === 4);
+  const quinto = v.disponibili('D').find(
+    (x) => Consigliere.giocaSempre(x) && !st.venduti().has(x.id));
+  st.registra(quinto.id, 1, 1, null);
+  v = new Valutatore(dati, reg, st); o = new Ottimizzatore(v); c = new Consigliere(v, o);
+  const copCinque = c.copertura('D');
+  verifica('col quinto la difesa si chiude davvero',
+           copCinque.coperti > copPiena.coperti && copCinque.mancano < 0.5,
+           copPiena.coperti + ' con quattro, ' + copCinque.coperti + ' con cinque');
+  // Lo stesso reparto, ma fatto di gente che gioca mezzo campionato.
+  st = apri();
+  st.inizializza(NOMI.slice(1), NOMI[0]);
+  v = new Valutatore(dati, reg, st);
+  const mezzi = v.disponibili('D').filter(
+    (x) => (x.presenze || 0) > 12 && (x.presenze || 0) < 20).slice(0, 4);
+  for (const x of mezzi) st.registra(x.id, 1, 1, null);
+  v = new Valutatore(dati, reg, st); o = new Ottimizzatore(v); c = new Consigliere(v, o);
+  const copMezza = c.copertura('D');
+  verifica('quattro da mezzo campionato non coprono quattro caselle',
+           copMezza.coperti < copPiena.coperti - 0.8,
+           copMezza.coperti + ' su 4, contro ' + copPiena.coperti);
+  // Perche' il programma parli di difensori bisogna che la fase **sia** quella
+  // dei difensori: finche' restano portieri da assegnare parla di portieri, e
+  // fa bene. Quindi si finisce il reparto prima, come succede a un'asta vera.
+  for (const p of st.presidenti()) {
+    let scudo = 0;
+    while (st.slotResidui(p.id, 'P') > 0 && scudo < 10) {
+      scudo += 1;
+      const por = v.disponibili('P').find((x) => x.titolare_por);
+      if (!por) break;
+      st.registra(por.id, p.id, 1, null);
+      for (const rid of v.riserveDi(por.id)) {
+        if (st.slotResidui(p.id, 'P') <= 0) break;
+        st.registra(rid, p.id, 1, null);
+      }
+      v = new Valutatore(dati, reg, st);
+    }
+  }
+  v = new Valutatore(dati, reg, st); o = new Ottimizzatore(v); c = new Consigliere(v, o);
+  verifica('adesso si chiamano i difensori', c.fase() === 'D', c.fase());
+  verifica('e il programma lo dice nella prima riga',
+           c.consiglio(12).indicazione.startsWith('In campo vanno 4 difensori'),
+           c.consiglio(12).indicazione.slice(0, 60));
+  const consD = c.consiglio(12);
+  const primiTre = consD.top.slice(0, 3);
+  verifica('coi titolari da coprire, la lista non apre con un giocatore da panchina',
+           primiTre.length === 0 || primiTre.some((d) => d.titolare_pieno),
+           primiTre.map((d) => d.nome + (d.titolare_pieno ? '' : ' (panchina)')).join(', '));
+  verifica('nessuno che gioca meno di quindici giornate sta in cima',
+           !consD.top.length || (consD.top[0].presenze / 38) >= 0.40,
+           consD.top.length ? consD.top[0].nome + ', ' + consD.top[0].presenze
+                              + ' presenze' : 'lista vuota');
+
+  titolo('[11] Il reparto chiuso non lascia mai la pagina bianca');
+  // Coi portieri a pacchetto la mia scelta e' una sola, e poi restano sette
+  // pacchetti da assegnare agli altri: sette chiamate in cui non posso fare
+  // niente. Prima, arrivati all'ultimo, la pagina restava vuota.
+  st = apri();
+  st.inizializza(NOMI.slice(1), NOMI[0]);
+  v = new Valutatore(dati, reg, st);
+  const mioP = v.disponibili('P').find((x) => x.titolare_por);
+  st.registra(mioP.id, 1, 30, null);
+  for (const rid of v.riserveDi(mioP.id)) {
+    if (st.slotResidui(1, 'P') <= 0) break;
+    st.registra(rid, 1, 1, null);
+  }
+  v = new Valutatore(dati, reg, st); o = new Ottimizzatore(v); c = new Consigliere(v, o);
+  const chiuso = c.consiglio(12);
+  verifica('la fase e\' ancora quella dei portieri', chiuso.fase === 'P');
+  verifica('ma quello che si vede e\' il reparto dopo', chiuso.anticipo === 'D',
+           'anticipo: ' + chiuso.anticipo);
+  verifica('e la lista non e\' vuota', chiuso.top.length > 0,
+           chiuso.top.length + ' consigliati');
+  verifica('la frase spiega perche\'',
+           chiuso.indicazione.startsWith('Hai chiuso i portieri'),
+           chiuso.indicazione.slice(0, 70));
+  verifica('non si propone di far pagare un portiere che non posso rilanciare',
+           chiuso.svuotare.length === 0);
+  verifica('e lo dice, invece di lasciare la sezione muta',
+           (chiuso.vuoti.svuotare || '').includes('un altro reparto'),
+           chiuso.vuoti.svuotare);
+  // Fino all'ultimo pacchetto: nemmeno con un solo avversario in gara.
+  let giri = 0;
+  while (st.slotResiduiRuolo('P') > 0 && giri < 40) {
+    giri += 1;
+    v = new Valutatore(dati, reg, st);
+    const chi = st.presidenti().find((p) => st.slotResidui(p.id, 'P') > 0);
+    if (!chi) break;
+    const x = v.disponibili('P').find((y) => y.titolare_por);
+    if (!x) break;
+    st.registra(x.id, chi.id, 1, null);
+    for (const rid of v.riserveDi(x.id)) {
+      if (st.slotResidui(chi.id, 'P') <= 0) break;
+      st.registra(rid, chi.id, 1, null);
+    }
+    v = new Valutatore(dati, reg, st); o = new Ottimizzatore(v); c = new Consigliere(v, o);
+    const d = c.consiglio(12);
+    if (st.slotResiduiRuolo('P') > 0 && d.top.length === 0) {
+      verifica('la pagina resta piena anche all\'ultimo pacchetto', false,
+               st.slotResiduiRuolo('P') + ' caselle rimaste e nessun consiglio');
+      break;
+    }
+  }
+  verifica('la pagina resta piena fino all\'ultimo pacchetto',
+           st.slotResiduiRuolo('P') === 0, st.slotResiduiRuolo('P') + ' rimaste');
+
+  titolo('[12] Rinominare non tocca le rose');
+  st = apri();
+  st.inizializza(NOMI.slice(1), NOMI[0]);
+  v = new Valutatore(dati, reg, st);
+  const qualcuno = v.disponibili('C')[0];
+  st.registra(qualcuno.id, 2, 25, null);
+  const prima = { crediti: st.presidenti()[1].crediti, acquisti: st.acquisti().length };
+  st.rinomina(['Io', 'Jacopo', 'Windser', 'Luca', 'Viane', 'Giorgio', 'Fede', 'Canzia']);
+  verifica('i nomi cambiano',
+           st.presidenti().map((p) => p.nome).join(',')
+           === 'Io,Jacopo,Windser,Luca,Viane,Giorgio,Fede,Canzia');
+  verifica('gli acquisti restano dove sono', st.acquisti().length === prima.acquisti);
+  verifica('e i crediti pure',
+           st.presidenti().find((p) => p.nome === 'Jacopo').crediti === prima.crediti);
+  let errR = null;
+  try { st.rinomina(['uno', 'due']); } catch (e) { errR = e; }
+  verifica('un elenco di nomi incompleto viene rifiutato', errR instanceof ErroreAsta);
+  st.rinomina(['Io', 'Mario', 'Mario', 'Mario', 'e', 'f', 'g', 'h']);
+  verifica('due squadre non possono chiamarsi uguale',
+           new Set(st.presidenti().map((p) => p.nome)).size === 8,
+           st.presidenti().map((p) => p.nome).join(','));
+
+  titolo('[13] L\'undici, e il rischio di restare in dieci');
+  st = apri();
+  st.inizializza(NOMI.slice(1), NOMI[0]);
+  v = new Valutatore(dati, reg, st); o = new Ottimizzatore(v);
+  let eq = new Equilibrio(v, o);
+  const vuoto = eq.quadro();
+  verifica('a rosa vuota l\'undici e\' tutto da riempire',
+           vuoto.undici.caselle_vuote === 11 && vuoto.in_rosa === 0,
+           vuoto.undici.caselle_vuote + ' caselle vuote');
+  verifica('e il modulo scelto e\' uno di quelli ammessi',
+           ['343', '352', '442', '433', '451', '532', '541']
+             .includes(vuoto.undici.modulo), vuoto.undici.modulo);
+  // Una rosa di gente che non gioca: in rosa ci sono, in campo no.
+  const scarsi = (r, n) => v.disponibili(r)
+    .filter((x) => (x.presenze || 0) > 0 && (x.presenze || 0) < 12).slice(0, n);
+  for (const r of ['P', 'D', 'C', 'A']) {
+    for (const x of scarsi(r, reg.slot[r])) {
+      try { st.registra(x.id, 1, 1, null); } catch (e) { /* crediti */ }
+    }
+  }
+  v = new Valutatore(dati, reg, st); o = new Ottimizzatore(v);
+  eq = new Equilibrio(v, o);
+  const fragile = eq.quadro();
+  verifica('una rosa di gente che non gioca fa alzare il rischio',
+           fragile.rischio.quota > 0.2,
+           Math.round(100 * fragile.rischio.quota) + '% delle giornate');
+  verifica('e il programma avvisa, dicendo anche quale reparto',
+           fragile.avvisi.some((a) => a.tipo === 'rischio'),
+           fragile.avvisi.map((a) => a.tipo).join(','));
+
+  titolo("[14] A meta' strada si arrotonda come Python");
+  // Le cinquecento aste per parte sono venute identiche in tutto tranne il
+  // punteggio schierato, e la colpa era di due giocatori con **esattamente**
+  // 30,5 e 28,5 presenze attese: `round(30.5)` in Python fa 30, `Math.round`
+  // in JavaScript fa 31. Non e' un caso di scuola - le presenze nascono da
+  // `titolarita * 38`, e sul mezzo punto ci cadono spesso.
+  verifica('arrotonda(30.5) fa 30, non 31', arrotonda(30.5) === 30,
+           'e invece ' + arrotonda(30.5));
+  verifica('arrotonda(28.5) fa 28', arrotonda(28.5) === 28);
+  verifica('arrotonda(29.5) fa 30', arrotonda(29.5) === 30);
+  verifica('sui numeri normali si comporta come sempre',
+           arrotonda(30.4) === 30 && arrotonda(30.6) === 31);
+  // E i giocatori col mezzo punto ci sono davvero, in questo listone.
+  st = apri();
+  st.inizializza(NOMI.slice(1), NOMI[0]);
+  v = new Valutatore(dati, reg, st);
+  const mezzoPunto = [...v.g.values()].filter(
+    (x) => Math.abs((x.presenze || 0) - Math.floor(x.presenze || 0) - 0.5) < 1e-9);
+  verifica('e nel listone ce ne sono', mezzoPunto.length > 0,
+           mezzoPunto.length + ' giocatori, per esempio '
+           + mezzoPunto.slice(0, 3).map((x) => x.nome + ' ' + x.presenze).join(', '));
+  c = new Consigliere(v, new Ottimizzatore(v));
+  if (mezzoPunto.length) {
+    verifica('e il motore li conta col numero giusto',
+             c.decisione(mezzoPunto[0]).presenze === arrotonda(mezzoPunto[0].presenze),
+             mezzoPunto[0].nome + ': ' + c.decisione(mezzoPunto[0]).presenze);
+  }
 
   deposito.cancella();
   scrivi('');
